@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { CheckCircle2, User, Phone, MapPin, ScanLine, Calendar } from "lucide-react";
+import { CheckCircle2, User, Phone, MapPin, ScanLine, Calendar, Mail } from "lucide-react";
 import Navbar from "../../components/Navbar";
 import Card from "../../components/Card";
 import Input from "../../components/Input";
@@ -11,7 +11,6 @@ import type { PatientType, Sex } from "../../types/Patient";
 
 interface RegisterPatientFormValues {
 	firstName: string;
-	middleName?: string;
 	lastName: string;
 	patientType: PatientType;
 	birthdate: string;
@@ -19,7 +18,7 @@ interface RegisterPatientFormValues {
 	contactNumber: string;
 	address: string;
 	identificationNumber: string;
-	email?: string;
+	email: string;
 }
 
 export default function RegisterPatient() {
@@ -36,19 +35,15 @@ export default function RegisterPatient() {
 		setError(null);
 		try {
 			const patient = await registerPatient({
-				profile_id: null,
-				patient_type: values.patientType,
-				identification_number: values.identificationNumber,
-				first_name: values.firstName,
-				middle_name: values.middleName || null,
-				last_name: values.lastName,
+				firstName: values.firstName,
+				lastName: values.lastName,
+				email: values.email.trim().toLowerCase(),
+				patientType: values.patientType,
 				sex: values.sex,
 				birthdate: values.birthdate,
-				course: null,
-				department: null,
-				contact_number: values.contactNumber,
-				email: values.email || null,
+				contactNumber: values.contactNumber,
 				address: values.address,
+				identificationNumber: values.identificationNumber,
 			});
 			setJustRegistered(patientFullName(patient));
 			reset();
@@ -91,7 +86,13 @@ export default function RegisterPatient() {
 						/>
 					</div>
 
-					<Input label="Middle Name (optional)" {...register("middleName")} />
+					<Input
+						label="Email"
+						type="email"
+						icon={<Mail className="h-4 w-4" />}
+						error={errors.email?.message}
+						{...register("email", { required: "Email is required" })}
+					/>
 
 					<div className="grid grid-cols-2 gap-3">
 						<Input

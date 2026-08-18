@@ -165,15 +165,27 @@ export interface HealthRecordWithPatient extends HealthRecord {
 	patients: { first_name: string; middle_name: string | null; last_name: string; identification_number: string } | null;
 }
 
+type HealthRecordWithProfile = HealthRecord & {
+	patients: {
+		identification_number: string | null;
+		profiles: { first_name: string; last_name: string } | null;
+	} | null;
+};
+
 export async function listRecentHealthRecords(limit = 50): Promise<HealthRecordWithPatient[]> {
 	const { data, error } = await supabase
 		.from("health_records")
-		.select("*, patients(first_name, middle_name, last_name, identification_number)")
+		.select("*, patients(identification_number, profiles!fk_profile(first_name, last_name))")
 		.order("measured_at", { ascending: false })
 		.limit(limit);
 
 	if (error) throw error;
-	return (data ?? []) as HealthRecordWithPatient[];
+	return ((data ?? []) as unknown as HealthRecordWithProfile[]).map(({ patients, ...record }) => ({
+		...record,
+		patients: patients?.profiles
+			? { first_name: patients.profiles.first_name, middle_name: null, last_name: patients.profiles.last_name, identification_number: patients.identification_number ?? "" }
+			: null,
+	}));
 }
 
 export { getVitalStatus };

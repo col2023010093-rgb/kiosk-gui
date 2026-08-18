@@ -9,7 +9,8 @@ export interface Recommendation {
 	tone: "good" | "warn" | "bad";
 }
 
-export function calculateAge(birthdate: string): number {
+export function calculateAge(birthdate: string | null): number {
+	if (!birthdate) return 0;
 	const dob = new Date(birthdate);
 	const diffMs = Date.now() - dob.getTime();
 	return Math.floor(diffMs / (1000 * 60 * 60 * 24 * 365.25));

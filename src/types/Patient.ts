@@ -1,4 +1,11 @@
-// Mirrors the `patients` table exactly (see src/types/database.ts).
-// Field names are intentionally snake_case to match the DB — see project notes
-// on why we adapt the app to the schema rather than the other way around.
-export type { PatientRow as Patient, PatientType, Sex } from "./database";
+import type { PatientRow, PatientType, Sex } from "./database";
+
+/** Patient row projected with its one-to-one profile for display. */
+export interface Patient extends PatientRow {
+	first_name: string;
+	middle_name: string | null;
+	last_name: string;
+	email: string;
+}
+
+export type { PatientType, Sex };

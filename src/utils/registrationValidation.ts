@@ -56,8 +56,8 @@ function isValidText(value: string, maxLength: number, minLength = 1): boolean {
 
 function normalizePhilippinePhone(value: string): string | null {
 	if (!/^\d+$/.test(value)) return null;
-	if (/^09\d{9}$/.test(value)) return `+63${value.slice(1)}`;
-	if (/^639\d{9}$/.test(value)) return `+${value}`;
+	if (/^09\d{9}$/.test(value)) return value;
+	if (/^639\d{9}$/.test(value)) return `0${value.slice(2)}`;
 	return null;
 }
 

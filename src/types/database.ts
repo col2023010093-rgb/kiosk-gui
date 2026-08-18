@@ -16,7 +16,7 @@ export interface Database {
 			profiles: {
 				Row: {
 					profile_id: string;
-					auth_id: string;
+					auth_id: string | null;
 					role: ProfileRole;
 					first_name: string;
 					last_name: string;
@@ -25,7 +25,7 @@ export interface Database {
 				};
 				Insert: {
 					profile_id?: string;
-					auth_id: string;
+					auth_id?: string | null;
 					role: ProfileRole;
 					first_name: string;
 					last_name: string;
@@ -39,47 +39,51 @@ export interface Database {
 			patients: {
 				Row: {
 					patient_id: string;
-					profile_id: string | null;
+					profile_id: string;
 					patient_type: PatientType;
-					identification_number: string;
-					first_name: string;
-					middle_name: string | null;
-					last_name: string;
-					sex: Sex;
-					birthdate: string;
-					age: number;
+					identification_number: string | null;
 					course: string | null;
 					department: string | null;
+					sex: Sex | null;
+					birthdate: string | null;
 					contact_number: string | null;
-					email: string | null;
-					address: string | null;
+					address_legacy: string | null;
+					country: string | null;
+					region: string | null;
+					province: string | null;
+					city_municipality: string | null;
+					barangay: string | null;
+					street: string | null;
+					house_number: string | null;
 					created_at: string;
 				};
 				Insert: {
 					patient_id?: string;
-					profile_id?: string | null;
+					profile_id: string;
 					patient_type: PatientType;
-					identification_number: string;
-					first_name: string;
-					middle_name?: string | null;
-					last_name: string;
-					sex: Sex;
-					birthdate: string;
-					age?: number;
+					identification_number?: string | null;
 					course?: string | null;
 					department?: string | null;
+					sex?: Sex | null;
+					birthdate?: string | null;
 					contact_number?: string | null;
-					email?: string | null;
-					address?: string | null;
+					address_legacy?: string | null;
+					country?: string | null;
+					region?: string | null;
+					province?: string | null;
+					city_municipality?: string | null;
+					barangay?: string | null;
+					street?: string | null;
+					house_number?: string | null;
 					created_at?: string;
 				};
 				Update: Partial<Database["public"]["Tables"]["patients"]["Insert"]>;
 			
 				Relationships: [
 					{
-						foreignKeyName: "patients_profile_id_fkey";
+						foreignKeyName: "fk_profile";
 						columns: ["profile_id"];
-						isOneToOne: false;
+						isOneToOne: true;
 						referencedRelation: "profiles";
 						referencedColumns: ["profile_id"];
 					}

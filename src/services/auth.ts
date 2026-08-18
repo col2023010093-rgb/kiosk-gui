@@ -15,7 +15,7 @@ export interface LoginResult {
 function toUser(profile: ProfileRow): User {
 	return {
 		id: profile.profile_id,
-		authId: profile.auth_id,
+		authId: profile.auth_id ?? "",
 		fullName: `${profile.first_name} ${profile.last_name}`.trim(),
 		email: profile.email,
 		role: profile.role,
@@ -59,18 +59,6 @@ export async function registerAccount(input: RegisterInput): Promise<RegisterRes
 	const validation = validateAndNormalizeRegistration(input);
 	if (!validation.value) return { success: false, error: validation.error ?? "Invalid registration details." };
 	const value = validation.value;
-	const address = [
-		value.address.houseNumber,
-		value.address.street,
-		value.address.barangay,
-		value.address.cityMunicipality,
-		value.address.province,
-		value.address.region,
-		value.address.country,
-	]
-		.filter(Boolean)
-		.join(", ");
-
 	const { data, error: signUpError } = await supabase.auth.signUp({
 		email: value.email,
 		password: value.password,
@@ -92,15 +80,18 @@ export async function registerAccount(input: RegisterInput): Promise<RegisterRes
 		profile_id: profile.profile_id,
 		patient_type: value.patientType,
 		identification_number: value.identificationNumber,
-		first_name: value.firstName,
-		last_name: value.lastName,
 		sex: value.sex,
 		birthdate: value.birthdate,
 		course: value.course ?? null,
 		department: value.department ?? null,
 		contact_number: value.contactNumber,
-		email: value.email,
-		address,
+		country: value.address.country,
+		region: value.address.region,
+		province: value.address.province ?? null,
+		city_municipality: value.address.cityMunicipality,
+		barangay: value.address.barangay,
+		street: value.address.street,
+		house_number: value.address.houseNumber,
 	});
 	if (patientError) {
 		return { success: false, error: "Could not finish creating the patient record." };
