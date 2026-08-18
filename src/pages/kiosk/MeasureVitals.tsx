@@ -24,6 +24,7 @@ const navigate = useNavigate();
 const { patient, setMeasurement } = useKioskSession();
 const [activeIndex, setActiveIndex] = useState(0);
 const [doneIndexes, setDoneIndexes] = useState<number[]>([]);
+const [error, setError] = useState<string | null>(null);
 const startedRef = useRef(false);
 
 useEffect(() => {
@@ -41,11 +42,15 @@ index += 1;
 
 if (index >= steps.length) {
 clearInterval(interval);
-runAssessment(patient.patient_id, "complete").then((result) => {
-setMeasurement(result);
-saveHealthRecord(result).catch((err) => console.error("Failed to save health record:", err));
-setTimeout(() => navigate("/kiosk/results"), 700);
-});
+void runAssessment(patient.patient_id, "complete")
+	.then(async (result) => {
+		await saveHealthRecord(result);
+		setMeasurement(result);
+		window.setTimeout(() => navigate("/kiosk/results"), 700);
+	})
+	.catch((err) => {
+		setError(err instanceof Error ? err.message : "Could not save the measurement.");
+	});
 return;
 }
 setActiveIndex(index);
@@ -55,6 +60,18 @@ return () => clearInterval(interval);
 }, [patient, navigate, setMeasurement]);
 
 if (!patient) return null;
+
+if (error) {
+	return (
+		<div className="flex min-h-screen flex-col items-center justify-center bg-bg px-6 text-center text-ink">
+			<h1 className="text-2xl font-bold">Measurement could not be completed</h1>
+			<p className="mt-2 max-w-sm text-sm text-muted">{error}</p>
+			<button type="button" onClick={() => navigate("/kiosk/scan", { replace: true })} className="mt-6 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">
+				Return to scan
+			</button>
+		</div>
+	);
+}
 
 return (
 <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-6 text-ink">

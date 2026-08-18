@@ -13,14 +13,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		let cancelled = false;
 
 		// Restore whatever session Supabase already has (e.g. after a page refresh).
-		supabase.auth.getSession().then(async ({ data }) => {
-			const authId = data.session?.user.id;
-			const profile = authId ? await fetchProfileForAuthId(authId).catch(() => null) : null;
-			if (!cancelled) {
-				setUser(profile);
-				setLoading(false);
-			}
-		});
+		void supabase.auth
+			.getSession()
+			.then(async ({ data }) => {
+				const authId = data.session?.user.id;
+				const profile = authId ? await fetchProfileForAuthId(authId).catch(() => null) : null;
+				if (!cancelled) setUser(profile);
+			})
+			.catch(() => {
+				if (!cancelled) setUser(null);
+			})
+			.finally(() => {
+				if (!cancelled) setLoading(false);
+			});
 
 		// Keep in sync with sign-in/sign-out happening elsewhere (other tabs, token refresh, etc.).
 		const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -30,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			}
 			const profile = await fetchProfileForAuthId(session.user.id).catch(() => null);
 			setUser(profile);
+			setLoading(false);
 		});
 
 		return () => {

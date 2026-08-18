@@ -70,10 +70,10 @@ index += 1;
 if (index >= steps.length) {
 clearInterval(interval);
 runAssessment(patient.patient_id, testType)
-.then((r) => {
-setResult(r);
-saveHealthRecord(r).catch((err) => console.error("Failed to save health record:", err));
-})
+	.then(async (r) => {
+		await saveHealthRecord(r);
+		setResult(r);
+	})
 .catch((err) => {
 setError(err instanceof Error ? err.message : "Assessment failed");
 });

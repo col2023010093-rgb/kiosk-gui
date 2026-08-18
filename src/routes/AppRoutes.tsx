@@ -161,7 +161,14 @@ export default function AppRoutes() {
 
 				{/* Kiosk-side device maintenance console (settings/calibration/override) —
 				    a standalone full-screen page, not part of the web staff dashboard. */}
-				<Route path="/kiosk/maintenance" element={<StaffDashboard />} />
+				<Route
+					path="/kiosk/maintenance"
+					element={
+						<ProtectedRoute allowedRoles={["clinic_staff"]}>
+							<StaffDashboard />
+						</ProtectedRoute>
+					}
+				/>
 
 				{/* Administrator role */}
 				<Route

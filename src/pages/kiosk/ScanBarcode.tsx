@@ -12,10 +12,12 @@ export default function ScanBarcode() {
 	const [manualCode, setManualCode] = useState("");
 	const [showManual, setShowManual] = useState(false);
 	const [checking, setChecking] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
 	const handleScan = useCallback(
 		async (code: string) => {
 			setChecking(true);
+			setError(null);
 			try {
 				const found = await findPatientByBarcode(code);
 				if (found) {
@@ -24,6 +26,8 @@ export default function ScanBarcode() {
 				} else {
 					navigate("/kiosk/not-registered", { state: { barcode: code } });
 				}
+			} catch (err) {
+				setError(err instanceof Error ? err.message : "Could not look up this barcode.");
 			} finally {
 				setChecking(false);
 			}
@@ -81,6 +85,7 @@ export default function ScanBarcode() {
 					</button>
 				</form>
 			)}
+			{error && <p className="mt-3 max-w-sm text-center text-sm text-bad">{error}</p>}
 		</div>
 	);
 }

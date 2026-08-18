@@ -16,9 +16,10 @@ export default function Patients() {
 
 	useEffect(() => {
 		let cancelled = false;
-		setLoading(true);
 		// Small debounce so we're not firing a query on every keystroke.
 		const handle = setTimeout(() => {
+			setLoading(true);
+			setError(null);
 			searchPatients(query)
 				.then((data) => {
 					if (!cancelled) setResults(data);

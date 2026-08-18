@@ -6,7 +6,7 @@ export default function KioskStaffGate({ children }: { children: ReactNode }) {
 	const { staffUnlocked } = useKioskSession();
 
 	if (!staffUnlocked) {
-		return <Navigate to="/kiosk/staff-login" replace />;
+		return <Navigate to="/kiosk" replace />;
 	}
 
 	return <>{children}</>;

@@ -25,10 +25,17 @@ export default function Login() {
 		}
 
 		setLoading(true);
-		// Shared login form for all roles — there's no separate staff/admin
-		// entry point yet, so we route based on whatever role comes back.
-		const result = await login(email, password);
-		setLoading(false);
+		let result;
+		try {
+			// Shared login form for all roles — there's no separate staff/admin
+			// entry point yet, so we route based on whatever role comes back.
+			result = await login(email.trim(), password);
+		} catch {
+			setError("Could not sign in. Please try again.");
+			return;
+		} finally {
+			setLoading(false);
+		}
 
 		if (!result.success) {
 			setError(result.error ?? "Sign in failed. Check your email and password.");
