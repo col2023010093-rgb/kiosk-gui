@@ -90,27 +90,32 @@ export default function AuthLayout({ eyebrow, title, subtitle, children }: AuthL
 				</div>
 			</header>
 
-			<main className="mx-auto flex w-full min-h-0 max-w-[1200px] flex-1 flex-col items-center justify-center px-[clamp(0.75rem,3vw,2rem)] py-[clamp(0.375rem,1.5dvh,2.5rem)]">
-				<motion.div
-					initial={{ opacity: 0, y: 20 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{ duration: 0.35, ease: "easeOut" }}
-					className="flex min-h-0 w-full flex-col items-center"
-				>
-					<div className="auth-eyebrow-block mb-[clamp(0.375rem,1.6dvh,2rem)] flex shrink-0 flex-col items-center text-center">
-						<span className="font-mono text-[clamp(0.625rem,1.4dvh,0.75rem)] font-semibold uppercase tracking-[3px] text-accent">
-							{eyebrow}
-						</span>
-						<h1 className="auth-title mt-[clamp(0.25rem,1dvh,0.75rem)] text-[clamp(1.125rem,4dvh,2.25rem)] font-bold tracking-tight text-ink">
-							{title}
-						</h1>
-						<p className="auth-subtitle mt-[clamp(0.125rem,0.6dvh,0.5rem)] max-w-[380px] text-[clamp(0.75rem,1.6dvh,0.9375rem)] text-muted">
-							{subtitle}
-						</p>
-					</div>
+			{/* Scroll lives here now, at the page level, instead of inside the
+			    card. The header above stays fixed; this area scrolls when the
+			    form content is taller than the remaining viewport. */}
+			<main className="w-full min-h-0 flex-1 overflow-y-auto">
+				<div className="mx-auto flex w-full max-w-[1200px] flex-col items-center px-[clamp(0.75rem,3vw,2rem)] py-[clamp(0.375rem,1.5dvh,2.5rem)]">
+					<motion.div
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.35, ease: "easeOut" }}
+						className="flex w-full flex-col items-center"
+					>
+						<div className="auth-eyebrow-block mb-[clamp(0.375rem,1.6dvh,2rem)] flex shrink-0 flex-col items-center text-center">
+							<span className="font-mono text-[clamp(0.625rem,1.4dvh,0.75rem)] font-semibold uppercase tracking-[3px] text-accent">
+								{eyebrow}
+							</span>
+							<h1 className="auth-title mt-[clamp(0.25rem,1dvh,0.75rem)] text-[clamp(1.125rem,4dvh,2.25rem)] font-bold tracking-tight text-ink">
+								{title}
+							</h1>
+							<p className="auth-subtitle mt-[clamp(0.125rem,0.6dvh,0.5rem)] max-w-[380px] text-[clamp(0.75rem,1.6dvh,0.9375rem)] text-muted">
+								{subtitle}
+							</p>
+						</div>
 
-					{children}
-				</motion.div>
+						{children}
+					</motion.div>
+				</div>
 			</main>
 		</div>
 	);

@@ -1,6 +1,10 @@
 import { supabase } from "../lib/supabaseClient";
 import type { ProfileRow } from "../types/database";
 import type { User } from "../types/User";
+import {
+	validateAndNormalizeRegistration,
+	type RegistrationInput,
+} from "../utils/registrationValidation";
 
 export interface LoginResult {
 	success: boolean;
@@ -39,16 +43,7 @@ export async function loginRequest(email: string, password: string): Promise<Log
 	return { success: true, user };
 }
 
-export interface RegisterInput {
-	fullName: string;
-	email: string;
-	password: string;
-	birthdate: string;
-	sex: "male" | "female";
-	contactNumber: string;
-	address: string;
-	identificationNumber: string;
-}
+export type RegisterInput = RegistrationInput;
 
 export interface RegisterResult {
 	success: boolean;
@@ -56,18 +51,29 @@ export interface RegisterResult {
 }
 
 /**
- * Self-registration: creates the auth.users row, then a linked profiles row
- * (role: "user") and a linked patients row so kiosk barcode lookups and
- * the patient dashboard both resolve to the same person.
- * Best-effort name split: first word -> first_name, remainder -> last_name.
+ * Client-side validation is duplicated here as a defensive usability guard.
+ * Supabase RLS, database constraints, and a server-side registration endpoint
+ * must still enforce these rules because callers can bypass this client.
  */
 export async function registerAccount(input: RegisterInput): Promise<RegisterResult> {
-	const [firstName, ...rest] = input.fullName.trim().split(/\s+/);
-	const lastName = rest.join(" ") || firstName;
+	const validation = validateAndNormalizeRegistration(input);
+	if (!validation.value) return { success: false, error: validation.error ?? "Invalid registration details." };
+	const value = validation.value;
+	const address = [
+		value.address.houseNumber,
+		value.address.street,
+		value.address.barangay,
+		value.address.cityMunicipality,
+		value.address.province,
+		value.address.region,
+		value.address.country,
+	]
+		.filter(Boolean)
+		.join(", ");
 
 	const { data, error: signUpError } = await supabase.auth.signUp({
-		email: input.email,
-		password: input.password,
+		email: value.email,
+		password: value.password,
 	});
 	if (signUpError || !data.user) {
 		return { success: false, error: signUpError?.message ?? "Could not create account." };
@@ -75,27 +81,29 @@ export async function registerAccount(input: RegisterInput): Promise<RegisterRes
 
 	const { data: profile, error: profileError } = await supabase
 		.from("profiles")
-		.insert({ auth_id: data.user.id, role: "user", first_name: firstName, last_name: lastName, email: input.email })
+		.insert({ auth_id: data.user.id, role: "user", first_name: value.firstName, last_name: value.lastName, email: value.email })
 		.select()
 		.single();
 	if (profileError) {
-		return { success: false, error: profileError.message };
+		return { success: false, error: "Could not finish creating the account." };
 	}
 
 	const { error: patientError } = await supabase.from("patients").insert({
 		profile_id: profile.profile_id,
-		patient_type: "student",
-		identification_number: input.identificationNumber,
-		first_name: firstName,
-		last_name: lastName,
-		sex: input.sex,
-		birthdate: input.birthdate,
-		contact_number: input.contactNumber,
-		email: input.email,
-		address: input.address,
+		patient_type: value.patientType,
+		identification_number: value.identificationNumber,
+		first_name: value.firstName,
+		last_name: value.lastName,
+		sex: value.sex,
+		birthdate: value.birthdate,
+		course: value.course ?? null,
+		department: value.department ?? null,
+		contact_number: value.contactNumber,
+		email: value.email,
+		address,
 	});
 	if (patientError) {
-		return { success: false, error: patientError.message };
+		return { success: false, error: "Could not finish creating the patient record." };
 	}
 
 	return { success: true };
