@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { CheckCircle2, User, Phone, MapPin, ScanLine, Calendar, Mail } from "lucide-react";
+import { CheckCircle2, User, Phone, MapPin, ScanLine, Calendar, Mail, Building2 } from "lucide-react";
 import Navbar from "../../components/Navbar";
 import Card from "../../components/Card";
 import Input from "../../components/Input";
 import Button from "../../components/Button";
 import { registerPatient } from "../../services/patient";
 import { patientFullName } from "../../utils/helpers";
+import { RAW_PROGRAMS } from "../../data/programs";
 import type { PatientType, Sex } from "../../types/Patient";
 
 interface RegisterPatientFormValues {
@@ -19,6 +20,8 @@ interface RegisterPatientFormValues {
 	address: string;
 	identificationNumber: string;
 	email: string;
+	course: string;
+	department: string;
 }
 
 export default function RegisterPatient() {
@@ -28,8 +31,12 @@ export default function RegisterPatient() {
 		register,
 		handleSubmit,
 		reset,
+		watch,
 		formState: { errors, isSubmitting },
 	} = useForm<RegisterPatientFormValues>({ defaultValues: { sex: "female", patientType: "student" } });
+
+	const patientType = watch("patientType");
+	const isStudent = patientType === "student";
 
 	async function onSubmit(values: RegisterPatientFormValues) {
 		setError(null);
@@ -44,6 +51,8 @@ export default function RegisterPatient() {
 				contactNumber: values.contactNumber,
 				address: values.address,
 				identificationNumber: values.identificationNumber,
+				course: values.patientType === "student" ? values.course : undefined,
+				department: values.patientType !== "student" ? values.department : undefined,
 			});
 			setJustRegistered(patientFullName(patient));
 			reset();
@@ -125,6 +134,31 @@ export default function RegisterPatient() {
 							<option value="staff">Staff</option>
 						</select>
 					</label>
+
+					{isStudent ? (
+						<label className="flex flex-col gap-1.5">
+							<span className="text-[13px] font-medium text-ink">Course</span>
+							<select
+								className="h-[52px] w-full rounded-xl border border-line bg-white px-4 text-[15px] text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+								{...register("course", { required: isStudent ? "Select a course" : false })}
+							>
+								<option value="">Select a course</option>
+								{RAW_PROGRAMS.map((program) => (
+									<option key={program.code} value={program.code}>
+										{program.code} — {program.name}
+									</option>
+								))}
+							</select>
+							{errors.course && <span className="text-[13px] text-bad">{errors.course.message}</span>}
+						</label>
+					) : (
+						<Input
+							label="Department"
+							icon={<Building2 className="h-4 w-4" />}
+							error={errors.department?.message}
+							{...register("department", { required: !isStudent ? "Department is required" : false })}
+						/>
+					)}
 
 					<Input
 						label="Contact Number"

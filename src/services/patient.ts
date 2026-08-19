@@ -75,6 +75,8 @@ export interface StaffPatientRegistration {
 	contactNumber: string;
 	address: string;
 	identificationNumber: string;
+	course?: string;
+	department?: string;
 }
 
 /** Staff registration creates the required profile before its linked patient record. */
@@ -96,6 +98,8 @@ export async function registerPatient(input: StaffPatientRegistration): Promise<
 			birthdate: input.birthdate,
 			contact_number: input.contactNumber,
 			address_legacy: input.address,
+			course: input.patientType === "student" ? input.course : null,
+			department: input.patientType !== "student" ? input.department : null,
 		})
 		.select()
 		.single();
