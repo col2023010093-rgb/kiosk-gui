@@ -15,7 +15,6 @@ class HeartRateMonitor(object):
 
     def __init__(self, print_raw=False, print_result=False):
         self.bpm = 0
-        self.spo2 = 0
         if print_raw is True:
             print('IR, Red')
         self.print_raw = print_raw
@@ -56,8 +55,6 @@ class HeartRateMonitor(object):
                             self.bpm = 0
                             if self.print_result:
                                 print("Finger not detected")
-                        if valid_spo2:
-                            self.spo2 = spo2
                         if self.print_result:
                             print("BPM: {0}, SpO2: {1}".format(self.bpm, spo2))
 
@@ -73,5 +70,4 @@ class HeartRateMonitor(object):
     def stop_sensor(self, timeout=2.0):
         self._thread.stopped = True
         self.bpm = 0
-        self.spo2 = 0
         self._thread.join(timeout)

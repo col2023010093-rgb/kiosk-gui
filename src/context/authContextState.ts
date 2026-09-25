@@ -8,6 +8,7 @@ export interface AuthContextValue {
 	 *  avoid ProtectedRoute bouncing a logged-in user to /login on refresh. */
 	loading: boolean;
 	login: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>;
+	loginWithBarcode: (barcodeId: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>;
 	logout: () => Promise<void>;
 }
 

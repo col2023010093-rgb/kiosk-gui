@@ -38,7 +38,10 @@ export default function IdleScreen() {
 	}, []);
 
 	const handleTap = () => {
-		navigate("/login");
+		// Send the person to the real login screen; Login.tsx reads `from` and
+		// continues into the kiosk flow afterward instead of the role's normal
+		// dashboard, so "Tap to begin" -> sign in -> scan barcode works in one go.
+		navigate("/login", { state: { from: "/kiosk/scan" } });
 	};
 
 	return (

@@ -80,5 +80,5 @@ def get_height():
 
 if __name__ == "__main__":
     # host="0.0.0.0" so the frontend can reach it by the Pi's IP, not just localhost.
-    # Port 5002: 5000 is temp_sensor_server.py, 5001 is heart_rate_spo2_server.py.
+    # Port 5002: 5000 is sensor_server.py (temperature + heart-rate/SpO2).
     app.run(host="0.0.0.0", port=5002)

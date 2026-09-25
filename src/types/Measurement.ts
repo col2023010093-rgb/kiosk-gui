@@ -32,4 +32,13 @@ export interface AssessmentResult {
 	heightCm?: number;
 	weightKg?: number;
 	bmi?: number;
+	/**
+	 * True if any sensor in this assessment used placeholder/simulated data
+	 * instead of a real hardware reading (e.g. height/weight or blood
+	 * pressure before those sensors are wired up). Simulated results must
+	 * never be persisted via saveHealthRecord — see services/measurement.ts.
+	 */
+	isSimulated: boolean;
+	/** Which sensors contributed simulated (non-hardware) data, if any. */
+	simulatedSensors: SensorKey[];
 }

@@ -110,3 +110,41 @@ export async function requestPasswordReset(email: string): Promise<{ sent: boole
 	if (error) return { sent: false, error: error.message };
 	return { sent: true };
 }
+
+export interface BarcodeLoginResponse {
+	token_hash?: string;
+	error?: string;
+}
+
+export async function loginWithBarcodeRequest(barcodeId: string): Promise<LoginResult> {
+	const { data, error: invokeError } = await supabase.functions.invoke<BarcodeLoginResponse>("barcode-login", {
+		body: { barcode_id: barcodeId },
+	});
+
+	if (invokeError || !data?.token_hash) {
+		return { success: false, error: data?.error ?? "Unable to sign in with this barcode." };
+	}
+
+	// This is what actually creates the real, refreshable Supabase session —
+	// the Edge Function only ever hands back a single-use redemption token.
+	const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+		token_hash: data.token_hash,
+		type: "magiclink",
+	});
+	if (verifyError || !verifyData.user) {
+		return { success: false, error: "Unable to sign in with this barcode." };
+	}
+
+	const user = await fetchProfileForAuthId(verifyData.user.id);
+	if (!user) {
+		return { success: false, error: "Signed in, but no profile record was found for this account." };
+	}
+
+	return { success: true, user };
+}
+
+export async function getMyBarcode(): Promise<string | null> {
+	const { data, error } = await supabase.rpc("get_my_barcode");
+	if (error) throw error;
+	return data;
+}

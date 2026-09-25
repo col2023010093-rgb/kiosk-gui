@@ -5,6 +5,7 @@ import { Activity, HeartPulse, Droplet, Thermometer, Ruler, Check, Loader2, Arro
 import { runAssessment, saveHealthRecord } from "../../services/measurement";
 import { getPatientByProfileId } from "../../services/patient";
 import { useAuth } from "../../hooks/useAuth";
+import { DemoModeBanner } from "../../components/DemoModeBanner";
 import type { Patient } from "../../types/Patient";
 import type { AssessmentResult, AssessmentType } from "../../types/Measurement";
 
@@ -71,7 +72,11 @@ if (index >= steps.length) {
 clearInterval(interval);
 runAssessment(patient.patient_id, testType)
 	.then(async (r) => {
-		await saveHealthRecord(r);
+		// Simulated readings (no hardware wired up yet) are shown but never
+		// persisted — see DemoModeBanner in the result view below.
+		if (!r.isSimulated) {
+			await saveHealthRecord(r);
+		}
 		setResult(r);
 	})
 .catch((err) => {
@@ -117,9 +122,12 @@ return (
 <div className="font-mono text-xs uppercase tracking-[3px] text-primary">Sensor test complete</div>
 <h1 className="mt-2 text-2xl font-bold text-ink">Readings captured</h1>
 <p className="mt-2 max-w-sm text-center text-sm text-muted">
-These values came straight off the sensor readers — use them to confirm each sensor path
-is wired correctly.
+{result.isSimulated
+	? "Hardware is offline, so the placeholder sensors below are standing in for the real ones. This reading was not saved."
+	: "These values came straight off the sensor readers — use them to confirm each sensor path is wired correctly."}
 </p>
+
+{result.isSimulated && <DemoModeBanner className="mt-6 w-full max-w-sm" />}
 
 <div className="mt-8 w-full max-w-sm rounded-2xl border border-line bg-white p-5">
 <dl className="space-y-2.5">

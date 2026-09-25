@@ -7,7 +7,7 @@ const RETURN_SECONDS = 8;
 
 export default function CompleteScreen() {
 	const navigate = useNavigate();
-	const { patient, resetSession } = useKioskSession();
+	const { patient, measurement, resetSession } = useKioskSession();
 	const [countdown, setCountdown] = useState(RETURN_SECONDS);
 
 	useEffect(() => {
@@ -39,7 +39,9 @@ export default function CompleteScreen() {
 				Thank you{patient ? `, ${patient.first_name}` : ""}!
 			</h1>
 			<p className="mt-2 max-w-sm text-sm text-muted">
-				Your measurements have been saved. View your full results anytime in the patient portal.
+				{measurement?.isSimulated
+					? "This was a demo run with hardware offline, so nothing was saved. Connect the sensors to record a real screening."
+					: "Your measurements have been saved. View your full results anytime in the patient portal."}
 			</p>
 
 			<button

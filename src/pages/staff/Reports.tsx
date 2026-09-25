@@ -1,7 +1,8 @@
 import { FileText } from "lucide-react";
 import Navbar from "../../components/Navbar";
 import Card from "../../components/Card";
-import { listReports } from "../../services/report";
+import { DemoModeBanner } from "../../components/DemoModeBanner";
+import { listReports, REPORTS_ARE_MOCK } from "../../services/report";
 
 export default function Reports() {
 	const reports = listReports().filter((r) => r.type !== "system");
@@ -9,6 +10,13 @@ export default function Reports() {
 	return (
 		<>
 			<Navbar eyebrow="Clinic Staff" title="Reports" subtitle="Summaries relevant to your clinic workflows." />
+
+			{REPORTS_ARE_MOCK && (
+				<DemoModeBanner
+					className="mb-4"
+					message="Sample Data — these reports are static placeholders, not live Supabase figures."
+				/>
+			)}
 
 			<div className="flex flex-col gap-4">
 				{reports.map((report) => (

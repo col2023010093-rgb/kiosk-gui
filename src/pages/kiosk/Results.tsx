@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
 import { useKioskSession } from "../../hooks/useKioskSession";
 import { getGenericRecommendations } from "../../utils/helpers";
+import { DemoModeBanner } from "../../components/DemoModeBanner";
 import type { VitalStatus } from "../../types/Measurement";
 
 const statusMeta: Record<VitalStatus, { label: string; className: string; Icon: ElementType }> = {
@@ -45,6 +46,7 @@ export default function Results() {
 
 	return (
 		<div className="mx-auto flex min-h-screen max-w-2xl flex-col items-center bg-bg px-6 py-10 text-ink">
+			{measurement.isSimulated && <DemoModeBanner className="mb-6 w-full" />}
 			<div className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold ${meta.className}`}>
 				<meta.Icon size={14} />
 				{meta.label}
@@ -87,7 +89,7 @@ export default function Results() {
 				onClick={() => navigate("/kiosk/complete")}
 				className="mt-8 w-full max-w-sm rounded-2xl bg-primary py-4 text-base font-semibold text-white transition-colors hover:bg-primary-deep"
 			>
-				Save & Finish
+				{measurement.isSimulated ? "Finish (not saved)" : "Save & Finish"}
 			</button>
 		</div>
 	);

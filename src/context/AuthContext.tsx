@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 import type { User } from "../types/User";
 import { AuthContext } from "./authContextState";
 import { supabase } from "../lib/supabaseClient";
-import { fetchProfileForAuthId, loginRequest, logoutRequest } from "../services/auth";
-
+import { fetchProfileForAuthId, loginRequest, loginWithBarcodeRequest, logoutRequest } from "../services/auth";
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -53,13 +52,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		return { success: false, error: result.error };
 	}
 
+	async function loginWithBarcode(barcodeId: string) {
+	const result = await loginWithBarcodeRequest(barcodeId);
+	if (result.success && result.user) {
+		setUser(result.user);
+		return { success: true, role: result.user.role };
+	}
+	return { success: false, error: result.error };
+}
+
 	async function logout() {
 		await logoutRequest();
 		setUser(null);
 	}
 
 	return (
-		<AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, login, logout }}>
+		<AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, login, loginWithBarcode, logout }}>
 			{children}
 		</AuthContext.Provider>
 	);

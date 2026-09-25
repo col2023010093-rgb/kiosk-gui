@@ -44,7 +44,12 @@ if (index >= steps.length) {
 clearInterval(interval);
 void runAssessment(patient.patient_id, "complete")
 	.then(async (result) => {
-		await saveHealthRecord(result);
+		// Simulated readings (no hardware wired up yet) never touch the
+		// database — Results shows a "Demo Mode" banner instead. Only a
+		// fully real, sensor-backed reading gets persisted.
+		if (!result.isSimulated) {
+			await saveHealthRecord(result);
+		}
 		setMeasurement(result);
 		window.setTimeout(() => navigate("/kiosk/results"), 700);
 	})

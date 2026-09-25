@@ -1,6 +1,13 @@
-// Thin fetch wrapper for the future backend API. No backend exists yet —
-// every current service (auth.ts, patient.ts, measurement.ts, report.ts)
-// uses mock data and does not call this module. Wire it in once the API ships.
+/**
+ * Non-functional scaffolding for a *future* custom backend API, reserved in
+ * case this project ever moves off calling Supabase directly from the
+ * client. Nothing in the app currently imports `apiFetch` — every real
+ * service (auth.ts, patient.ts, measurement.ts) talks to Supabase directly
+ * via `lib/supabaseClient.ts`, and `report.ts` currently returns static mock
+ * data (see its own module doc). This file has no bearing on either of
+ * those; do not assume `apiFetch`/`ApiError` are live or wired into
+ * anything until a real backend exists to point `BASE_URL` at.
+ */
 
 // Set this once the backend exists. Left blank for same-origin mock/dev use.
 const BASE_URL = "";

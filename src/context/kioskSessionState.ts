@@ -3,11 +3,6 @@ import type { Patient } from "../types/Patient";
 import type { AssessmentResult } from "../types/Measurement";
 
 export interface KioskSessionValue {
-	staffUnlocked: boolean;
-	staffName: string | null;
-	unlockStaff: (name: string) => void;
-	lockStaff: () => void;
-
 	patient: Patient | null;
 	setPatient: (patient: Patient | null) => void;
 

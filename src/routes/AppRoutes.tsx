@@ -2,9 +2,10 @@ import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider } from "../context/AuthContext";
 import { KioskSessionProvider } from "../context/KioskSessionContext";
 import ProtectedRoute from "../components/ProtectedRoute";
-import KioskStaffGate from "../components/KioskStaffGate";
 import KioskLayout from "../layouts/KioskLayout";
 import DashboardLayout from "../layouts/DashboardLayout";
+
+import type { UserRole } from "../types/User";
 
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
@@ -39,6 +40,14 @@ import AdminReports from "../pages/admin/Reports";
 import Settings from "../pages/admin/Settings";
 import SystemLogs from "../pages/admin/SystemLogs";
 
+import MyBarcode from "../pages/user/MyBarcode";
+
+// Kiosk screening flow (scan -> confirm -> measure -> results -> complete) now
+// requires a real login instead of the old unauthenticated 5-tap staff gate.
+// Any authenticated role can operate the kiosk device; narrow this to
+// ["user"] if self-service should be patient-accounts-only.
+const KIOSK_ALLOWED_ROLES: UserRole[] = ["user", "clinic_staff", "admin"];
+
 export default function AppRoutes() {
 	return (
 		<AuthProvider>
@@ -55,53 +64,55 @@ export default function AppRoutes() {
 						</KioskSessionProvider>
 					}
 				>
+					{/* IdleScreen stays public — it's the pre-login landing screen. */}
 					<Route index element={<IdleScreen />} />
+					{/* Everything past the idle screen requires a real login (any role). */}
 					<Route
 						path="scan"
 						element={
-							<KioskStaffGate>
+							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
 								<ScanBarcode />
-							</KioskStaffGate>
+							</ProtectedRoute>
 						}
 					/>
 					<Route
 						path="confirm"
 						element={
-							<KioskStaffGate>
+							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
 								<PatientConfirm />
-							</KioskStaffGate>
+							</ProtectedRoute>
 						}
 					/>
 					<Route
 						path="measure"
 						element={
-							<KioskStaffGate>
+							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
 								<MeasureVitals />
-							</KioskStaffGate>
+							</ProtectedRoute>
 						}
 					/>
 					<Route
 						path="results"
 						element={
-							<KioskStaffGate>
+							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
 								<Results />
-							</KioskStaffGate>
+							</ProtectedRoute>
 						}
 					/>
 					<Route
 						path="complete"
 						element={
-							<KioskStaffGate>
+							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
 								<CompleteScreen />
-							</KioskStaffGate>
+							</ProtectedRoute>
 						}
 					/>
 					<Route
 						path="not-registered"
 						element={
-							<KioskStaffGate>
+							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
 								<NotRegistered />
-							</KioskStaffGate>
+							</ProtectedRoute>
 						}
 					/>
 				</Route>
@@ -139,6 +150,7 @@ export default function AppRoutes() {
 					<Route path="recommendations" element={<Recommendations />} />
 					<Route path="history" element={<History />} />
 					<Route path="profile" element={<Profile />} />
+					<Route path="my-barcode" element={<MyBarcode />} />
 				</Route>
 
 				{/* Clinic staff role */}

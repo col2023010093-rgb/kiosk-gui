@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, HeartPulse, Ruler, Gauge, Activity, Thermometer, ClipboardList, Check } from "lucide-react";
+import { ArrowRight, HeartPulse, Ruler, Gauge, Activity, Thermometer, ClipboardList, Check, LogOut } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
 type TestType = "bmi" | "blood_pressure" | "heart_rate_spo2" | "temperature" | "complete";
@@ -42,7 +42,7 @@ const TEST_OPTIONS: { id: TestType; label: string; icon: typeof Ruler; measures:
 
 export default function UserDashboard() {
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user, logout } = useAuth();
 	const [selectedTest, setSelectedTest] = useState<TestType | null>(null);
 
 	function handleBeginTest() {
@@ -159,7 +159,15 @@ export default function UserDashboard() {
 					})}
 				</div>
 
-				<div className="flex shrink-0 justify-center pt-[clamp(0.4rem,1.2vh,0.9rem)] sm:justify-end">
+				<div className="flex shrink-0 items-center justify-between pt-[clamp(0.4rem,1.2vh,0.9rem)]">
+					<button
+						type="button"
+						onClick={() => void logout()}
+						className="inline-flex h-[clamp(2.75rem,5.5vh,3rem)] items-center gap-2 rounded-xl border border-line px-[clamp(1rem,3vw,1.5rem)] text-[clamp(0.875rem,1.3vw,1rem)] font-semibold text-muted transition hover:border-bad/40 hover:text-bad focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bad/30 focus-visible:ring-offset-2"
+					>
+						<LogOut className="h-[1em] w-[1em]" aria-hidden="true" />
+						Log Out
+					</button>
 					<button
 						type="button"
 						onClick={handleBeginTest}

@@ -37,42 +37,70 @@ type SensorReading = Pick<
 	| "temperatureCelsius"
 >;
 
-const HEART_RATE_SPO2_URL = "http://localhost:5001/api/heart-rate-spo2";
+// Both sensor endpoints are served by the single consolidated sensor_server.py
+// on port 5000 (formerly two separate scripts on 5000 and 5001 — see that
+// file's docstring for the merge rationale).
+const HEART_RATE_SPO2_URL = "http://localhost:5000/api/heart-rate-spo2";
 const TEMPERATURE_URL = "http://localhost:5000/api/temperature";
+
+interface SensorReader {
+	/**
+	 * True if this reader returns placeholder data instead of a real
+	 * hardware reading. Set to false once the corresponding physical sensor
+	 * (see height_sensor_server.py, a future BP sensor server) is wired up.
+	 */
+	simulated: boolean;
+	read: () => Promise<Partial<SensorReading>>;
+}
 
 // Physical sensor capture — unrelated to Supabase, left as-is. heightWeight
 // and bloodPressure still have no hardware endpoint wired up (see
-// height_sensor_server.py, which exists but isn't called from here yet).
-const SENSOR_READERS: Record<SensorKey, () => Promise<Partial<SensorReading>>> = {
-	heightWeight: async () => {
-		const heightCm = 162;
-		const weightKg = round1(randomBetween(58, 72));
-		const bmi = round1(weightKg / (heightCm / 100) ** 2);
-		return { heightCm, weightKg, bmi };
+// height_sensor_server.py, which exists but isn't called from here yet), so
+// those two readers return simulated data and are flagged `simulated: true`.
+// runAssessment uses that flag to mark the whole result as simulated, and
+// saveHealthRecord refuses to persist a simulated result — see below.
+const SENSOR_READERS: Record<SensorKey, SensorReader> = {
+	heightWeight: {
+		simulated: true,
+		read: async () => {
+			const heightCm = 162;
+			const weightKg = round1(randomBetween(58, 72));
+			const bmi = round1(weightKg / (heightCm / 100) ** 2);
+			return { heightCm, weightKg, bmi };
+		},
 	},
-	bloodPressure: async () => {
-		return {
-			bloodPressureSystolic: Math.round(randomBetween(110, 132)),
-			bloodPressureDiastolic: Math.round(randomBetween(70, 88)),
-		};
+	bloodPressure: {
+		simulated: true,
+		read: async () => {
+			return {
+				bloodPressureSystolic: Math.round(randomBetween(110, 132)),
+				bloodPressureDiastolic: Math.round(randomBetween(70, 88)),
+			};
+		},
 	},
-	heartRateSpo2: async () => {
-		const response = await fetch(HEART_RATE_SPO2_URL);
-		if (!response.ok) {
-			const body = await response.json().catch(() => ({}));
-			throw new Error(body.error ?? `Heart rate/SpO2 sensor request failed (${response.status})`);
-		}
-		const data: { bpm: number; spo2: number } = await response.json();
-		return { heartRate: data.bpm, oxygenSaturation: data.spo2 };
+	heartRateSpo2: {
+		simulated: false,
+		read: async () => {
+			const response = await fetch(HEART_RATE_SPO2_URL);
+			if (!response.ok) {
+				const body = await response.json().catch(() => ({}));
+				throw new Error(body.error ?? `Heart rate/SpO2 sensor request failed (${response.status})`);
+			}
+			const data: { bpm: number; spo2: number } = await response.json();
+			return { heartRate: data.bpm, oxygenSaturation: data.spo2 };
+		},
 	},
-	temperature: async () => {
-		const response = await fetch(TEMPERATURE_URL);
-		if (!response.ok) {
-			const body = await response.json().catch(() => ({}));
-			throw new Error(body.error ?? `Temperature sensor request failed (${response.status})`);
-		}
-		const data: { celsius: number } = await response.json();
-		return { temperatureCelsius: data.celsius };
+	temperature: {
+		simulated: false,
+		read: async () => {
+			const response = await fetch(TEMPERATURE_URL);
+			if (!response.ok) {
+				const body = await response.json().catch(() => ({}));
+				throw new Error(body.error ?? `Temperature sensor request failed (${response.status})`);
+			}
+			const data: { celsius: number } = await response.json();
+			return { temperatureCelsius: data.celsius };
+		},
 	},
 };
 
@@ -105,9 +133,12 @@ function computeStatus(reading: Partial<SensorReading>): VitalStatus {
 export async function runAssessment(patientId: string, testType: AssessmentType): Promise<AssessmentResult> {
 	const sensors = ASSESSMENT_SENSORS[testType];
 	const reading: Partial<SensorReading> = {};
+	const simulatedSensors: SensorKey[] = [];
 	for (const sensorKey of sensors) {
-		const partial = await SENSOR_READERS[sensorKey]();
+		const reader = SENSOR_READERS[sensorKey];
+		const partial = await reader.read();
 		Object.assign(reading, partial);
+		if (reader.simulated) simulatedSensors.push(sensorKey);
 	}
 
 	return {
@@ -117,14 +148,32 @@ export async function runAssessment(patientId: string, testType: AssessmentType)
 		recordedAt: new Date().toISOString(),
 		...reading,
 		status: computeStatus(reading),
+		isSimulated: simulatedSensors.length > 0,
+		simulatedSensors,
 	};
 }
 
-/** Persists an AssessmentResult to health_records once the kiosk flow completes. */
+/**
+ * Persists an AssessmentResult to health_records once the kiosk flow completes.
+ *
+ * Refuses to write results that include simulated/placeholder sensor data
+ * (see SENSOR_READERS above) — a demo reading must never be recorded as if
+ * it came from a real screening. Callers should check `result.isSimulated`
+ * themselves *before* calling this, so the person sees a "demo mode" state
+ * rather than a save-failed error; this check is a defense-in-depth backstop
+ * in case a future caller forgets to.
+ */
 export async function saveHealthRecord(
 	result: AssessmentResult,
 	opts: { kioskId?: string | null; measuredBy?: string | null } = {}
 ): Promise<HealthRecord> {
+	if (result.isSimulated) {
+		throw new Error(
+			"Refusing to save a measurement that includes simulated/placeholder sensor data " +
+				`(${result.simulatedSensors.join(", ")}). Connect the real sensor(s) before this can be recorded.`
+		);
+	}
+
 	const { data, error } = await supabase
 		.from("health_records")
 		.insert({

@@ -12,6 +12,7 @@ import {
 	ShieldCheck,
 	Settings,
 	ScrollText,
+	ScanLine,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import type { UserRole } from "../types/User";
@@ -26,6 +27,7 @@ interface NavItem {
 const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
 	user: [
 		{ label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, end: true },
+		{ label: "My Barcode", to: "/dashboard/my-barcode", icon: ScanLine },
 		{ label: "Health Records", to: "/dashboard/records", icon: FileText },
 		{ label: "Recommendations", to: "/dashboard/recommendations", icon: HeartPulse },
 		{ label: "History", to: "/dashboard/history", icon: History },
