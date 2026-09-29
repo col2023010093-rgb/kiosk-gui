@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { User, UserRole } from "../types/User";
+import type { User, UserRole } from "@generick/shared";
 
 export interface AuthContextValue {
 	user: User | null;

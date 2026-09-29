@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, ShieldCheck, BarChart3, Settings, ScrollText, ArrowRight } from "lucide-react";
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
 import { mockStaffAccounts } from "../../data/mockStaff";
 import { mockSystemLogs } from "../../data/mockLogs";
-import { countPatients } from "../../services/patient";
+import { countPatients } from "@generick/shared";
 
 const SECTIONS = [
 	{ to: "/admin/users", label: "Users", icon: Users, stat: "Patient accounts" },

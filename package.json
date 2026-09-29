@@ -1,8 +1,12 @@
 {
-  "name": "kiosk-gui",
+  "name": "kiosk-monorepo",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -10,6 +14,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@generick/shared": "*",
     "@supabase/supabase-js": "^2.112.3",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.25.0",

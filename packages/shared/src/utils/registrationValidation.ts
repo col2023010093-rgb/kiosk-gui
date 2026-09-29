@@ -1,5 +1,5 @@
 import { PROGRAM_CODES } from "../data/programs";
-import type { PatientType, Sex } from "../types/database";
+import type { PatientType, Sex } from "@generick/shared";
 
 const NAME_PATTERN = /^[\p{L}\p{M}]+(?:[ '-][\p{L}\p{M}]+)*$/u;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;

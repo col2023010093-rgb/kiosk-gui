@@ -1,5 +1,5 @@
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
 import { recentMeasurements } from "../../data/mockHealth";
 import type { VitalStatus } from "../../data/mockHealth";
 

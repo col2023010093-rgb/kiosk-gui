@@ -14,15 +14,18 @@ import {
 	Building2,
 	Home,
 	Hash,
+	UserRound,
+	Users,
+	ChevronDown,
 } from "lucide-react";
 import AuthLayout from "../../layouts/AuthLayout";
-import Input from "../../components/Input";
-import Button from "../../components/Button";
+import { Input } from "@generick/shared";
+import { Button } from "@generick/shared";
 import Modal from "../../components/Modal";
 import { TermsOfUseContent, PrivacyPolicyContent } from "../../components/LegalContent";
-import { registerAccount } from "../../services/auth";
-import { RAW_PROGRAMS } from "../../data/programs";
-import { validateAndNormalizeRegistration } from "../../utils/registrationValidation";
+import { registerAccount } from "@generick/shared";
+import { RAW_PROGRAMS } from "@generick/shared";
+import { validateAndNormalizeRegistration } from "@generick/shared";
 import {
 	regions,
 	provinces,
@@ -39,15 +42,28 @@ type PatientType = "student" | "faculty" | "staff";
 
 type SelectOption = { value: string; label: string };
 
-const CODE_WIDTH = Math.max(...RAW_PROGRAMS.map((p) => p.code.length));
-
 const COURSE_OPTIONS: SelectOption[] = RAW_PROGRAMS.map((p) => ({
 	value: p.code,
-	label: `${p.code.padEnd(CODE_WIDTH, "\u00A0")}  ${p.name}`,
+	label: `${p.code} - ${p.name}`,
 }));
 
-// Small styled <select> matching the Sex/Patient-type dropdowns already
-// used in this form, so the address section doesn't look bolted on.
+const SEX_OPTIONS: SelectOption[] = [
+	{ value: "female", label: "Female" },
+	{ value: "male", label: "Male" },
+];
+
+const PATIENT_TYPE_OPTIONS: SelectOption[] = [
+	{ value: "student", label: "Student" },
+	{ value: "faculty", label: "Faculty" },
+	{ value: "staff", label: "Staff" },
+];
+
+// One layout token for every row of fields: one column on narrow screens,
+// two from `sm` up, with a single consistent gap.
+const ROW = "grid grid-cols-1 gap-5 sm:grid-cols-2";
+
+// Every dropdown in the form goes through this component so it matches the
+// text inputs: same height, same font size, same icon position, same chevron.
 function FieldSelect({
 	label,
 	icon,
@@ -62,15 +78,15 @@ function FieldSelect({
 	value: string;
 	onChange: (value: string) => void;
 	options: SelectOption[];
-	placeholder: string;
+	placeholder?: string;
 	disabled?: boolean;
 }) {
 	return (
-		<label className="flex flex-col gap-1">
-			<span className="text-[clamp(0.6875rem,1.4dvh,0.8125rem)] font-medium text-ink">{label}</span>
+		<label className="flex flex-col gap-2">
+			<span className="text-xl font-medium text-ink">{label}</span>
 			<div className="relative">
 				{icon && (
-					<span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">
+					<span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted">
 						{icon}
 					</span>
 				)}
@@ -78,17 +94,24 @@ function FieldSelect({
 					value={value}
 					disabled={disabled}
 					onChange={(e) => onChange(e.target.value)}
-					className={`h-[clamp(2.5rem,5.5dvh,3.25rem)] w-full rounded-xl border border-line bg-white ${
-						icon ? "pl-10" : "px-4"
-					} pr-4 font-mono text-[clamp(0.8125rem,1.6dvh,0.9375rem)] text-ink outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:bg-accent-tint/20 disabled:text-muted`}
+					className={`h-16 w-full appearance-none truncate rounded-xl border border-line bg-white ${
+						icon ? "pl-14" : "pl-4"
+					} pr-14 text-xl text-ink outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:bg-accent-tint/20 disabled:text-muted ${
+						value === "" ? "text-muted" : ""
+					}`}
 				>
-					<option value="">{placeholder}</option>
+					{placeholder && (
+						<option value="" disabled>
+							{placeholder}
+						</option>
+					)}
 					{options.map((opt) => (
-						<option key={opt.value} value={opt.value}>
+						<option key={opt.value} value={opt.value} className="text-ink">
 							{opt.label}
 						</option>
 					))}
 				</select>
+				<ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-6 w-6 -translate-y-1/2 text-muted" />
 			</div>
 		</label>
 	);
@@ -263,19 +286,31 @@ export default function Register() {
 		navigate("/login");
 	}
 
+	const iconClass = "h-7 w-7";
+
 	return (
 		<AuthLayout
 			eyebrow="Patient Authentication"
 			title="Create your account"
 			subtitle="Register once — use it here and on the web application."
 		>
-			<div className="register-card w-full max-w-[720px] rounded-[1.25rem] border border-line bg-white p-[clamp(0.875rem,2.4dvh,2rem)] shadow-[0_1px_2px_rgba(11,36,48,0.04),0_12px_32px_rgba(11,36,48,0.06)]">
-				<form onSubmit={handleSubmit} className="flex flex-col gap-[clamp(0.5rem,1.6dvh,1.25rem)]">
-					<div className="grid grid-cols-2 gap-[clamp(0.5rem,1.5vw,1rem)]">
+			{/* The [&_...] selectors scale the shared <Input> (whose source lives in
+			    @generick/shared) without editing that package. If its labels still look
+			    small, change the label class in the shared Input directly. */}
+			<div
+				className="register-card w-full max-w-[960px] rounded-[1.25rem] border border-line bg-white p-6 shadow-[0_1px_2px_rgba(11,36,48,0.04),0_12px_32px_rgba(11,36,48,0.06)] sm:p-10
+					[&_input:not([type=checkbox])]:h-16
+					[&_input:not([type=checkbox])]:text-xl
+					[&_form>div>label>span:first-child]:text-xl
+					[&_div>label>span:first-child]:text-xl"
+			>
+				<form onSubmit={handleSubmit} className="flex flex-col gap-6">
+					{/* Personal details */}
+					<div className={ROW}>
 						<Input
 							label="First Name"
 							placeholder="Juan"
-							icon={<User className="h-4.5 w-4.5" />}
+							icon={<User className={iconClass} />}
 							value={firstName}
 							onChange={(e) => setFirstName(e.target.value)}
 							maxLength={80}
@@ -283,18 +318,19 @@ export default function Register() {
 						<Input
 							label="Last Name"
 							placeholder="Dela Cruz"
+							icon={<User className={iconClass} />}
 							value={lastName}
 							onChange={(e) => setLastName(e.target.value)}
 							maxLength={80}
 						/>
 					</div>
 
-					<div className="grid grid-cols-2 gap-[clamp(0.5rem,1.5vw,1rem)]">
+					<div className={ROW}>
 						<Input
 							label="Email"
 							type="email"
 							placeholder="you@example.com"
-							icon={<Mail className="h-4.5 w-4.5" />}
+							icon={<Mail className={iconClass} />}
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							autoComplete="username"
@@ -303,7 +339,7 @@ export default function Register() {
 						<Input
 							label="Contact Number"
 							placeholder="09XXXXXXXXX"
-							icon={<Phone className="h-4.5 w-4.5" />}
+							icon={<Phone className={iconClass} />}
 							value={contactNumber}
 							onChange={(e) => setContactNumber(e.target.value.replace(/\D/g, ""))}
 							inputMode="numeric"
@@ -312,12 +348,12 @@ export default function Register() {
 						/>
 					</div>
 
-					<div className="grid grid-cols-2 gap-[clamp(0.5rem,1.5vw,1rem)]">
+					<div className={ROW}>
 						<Input
 							label="Password"
 							type="password"
 							placeholder="••••••••"
-							icon={<Lock className="h-4.5 w-4.5" />}
+							icon={<Lock className={iconClass} />}
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							autoComplete="new-password"
@@ -326,58 +362,45 @@ export default function Register() {
 							label="Confirm Password"
 							type="password"
 							placeholder="••••••••"
-							icon={<Lock className="h-4.5 w-4.5" />}
+							icon={<Lock className={iconClass} />}
 							value={confirmPassword}
 							onChange={(e) => setConfirmPassword(e.target.value)}
 							autoComplete="new-password"
 						/>
 					</div>
 
-					<div className="grid grid-cols-2 gap-[clamp(0.5rem,1.5vw,1rem)]">
+					<div className={ROW}>
 						<Input
 							label="Birthdate"
 							type="date"
-							icon={<Calendar className="h-4.5 w-4.5" />}
+							icon={<Calendar className={iconClass} />}
 							value={birthdate}
 							onChange={(e) => setBirthdate(e.target.value)}
 							max={new Date().toISOString().slice(0, 10)}
 						/>
-						<label className="flex flex-col gap-1">
-							<span className="text-[clamp(0.6875rem,1.4dvh,0.8125rem)] font-medium text-ink">Sex</span>
-							<select
-								value={sex}
-								onChange={(e) => setSex(e.target.value as Sex)}
-								className="h-[clamp(2.5rem,5.5dvh,3.25rem)] w-full rounded-xl border border-line bg-white px-4 text-[clamp(0.8125rem,1.6dvh,0.9375rem)] text-ink outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/15"
-							>
-								<option value="" disabled>
-									Select sex
-								</option>
-								<option value="female">Female</option>
-								<option value="male">Male</option>
-							</select>
-						</label>
+						<FieldSelect
+							label="Sex"
+							icon={<UserRound className={iconClass} />}
+							value={sex}
+							onChange={(v) => setSex(v as Sex)}
+							options={SEX_OPTIONS}
+							placeholder="Select sex"
+						/>
 					</div>
 
-					<div className="grid grid-cols-2 gap-[clamp(0.5rem,1.5vw,1rem)]">
-						<label className="flex flex-col gap-1">
-							<span className="text-[clamp(0.6875rem,1.4dvh,0.8125rem)] font-medium text-ink">
-								I am a...
-							</span>
-							<select
-								value={patientType}
-				onChange={(e) => handlePatientTypeChange(e.target.value)}
-								className="h-[clamp(2.5rem,5.5dvh,3.25rem)] w-full rounded-xl border border-line bg-white px-4 text-[clamp(0.8125rem,1.6dvh,0.9375rem)] text-ink outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/15"
-							>
-								<option value="student">Student</option>
-								<option value="faculty">Faculty</option>
-								<option value="staff">Staff</option>
-							</select>
-						</label>
+					<div className={ROW}>
+						<FieldSelect
+							label="I am a..."
+							icon={<Users className={iconClass} />}
+							value={patientType}
+							onChange={handlePatientTypeChange}
+							options={PATIENT_TYPE_OPTIONS}
+						/>
 
 						{patientType === "student" ? (
 							<FieldSelect
 								label="Course"
-								icon={<GraduationCap className="h-4.5 w-4.5" />}
+								icon={<GraduationCap className={iconClass} />}
 								value={course}
 								onChange={setCourse}
 								options={COURSE_OPTIONS}
@@ -387,7 +410,7 @@ export default function Register() {
 							<Input
 								label="Department"
 								placeholder="Registrar's Office"
-								icon={<GraduationCap className="h-4.5 w-4.5" />}
+								icon={<GraduationCap className={iconClass} />}
 								value={department}
 								onChange={(e) => setDepartment(e.target.value)}
 							/>
@@ -395,35 +418,32 @@ export default function Register() {
 					</div>
 
 					<Input
-							label={patientType === "student" ? "LSB ID Number" : "School ID Number"}
-							icon={<IdCard className="h-4.5 w-4.5" />}
-							placeholder={patientType === "student" ? "Type your LSB ID number" : "Type your school ID number"}
-							value={lsbIdNumber}
-							onChange={(e) => setLsbIdNumber(e.target.value.replace(/\D/g, ""))}
-							inputMode="numeric"
-							pattern="[0-9]*"
-							maxLength={64}
-						/>
+						label={patientType === "student" ? "LSB ID Number" : "School ID Number"}
+						icon={<IdCard className={iconClass} />}
+						placeholder={patientType === "student" ? "Type your LSB ID number" : "Type your school ID number"}
+						value={lsbIdNumber}
+						onChange={(e) => setLsbIdNumber(e.target.value.replace(/\D/g, ""))}
+						inputMode="numeric"
+						pattern="[0-9]*"
+						maxLength={64}
+					/>
 
 					{/* Address section */}
-					<div className="flex flex-col gap-[clamp(0.5rem,1.4dvh,0.875rem)]">
-						<span className="text-[clamp(0.6875rem,1.4dvh,0.8125rem)] font-semibold text-ink">
-							Address
-						</span>
+					<div className="mt-2 flex flex-col gap-5 border-t border-line pt-8">
+						<h2 className="text-3xl font-semibold text-ink">Address</h2>
 
-						<div className="grid grid-cols-2 gap-[clamp(0.5rem,1.5vw,1rem)]">
+						<div className={ROW}>
 							<FieldSelect
 								label="Country"
-								icon={<Globe className="h-4.5 w-4.5" />}
+								icon={<Globe className={iconClass} />}
 								value={country}
 								onChange={setCountry}
 								options={[{ value: "Philippines", label: "Philippines" }]}
-								placeholder="Select country"
 								disabled
 							/>
 							<FieldSelect
 								label="Region"
-								icon={<MapPin className="h-4.5 w-4.5" />}
+								icon={<MapPin className={iconClass} />}
 								value={regionCode}
 								onChange={handleRegionChange}
 								options={regionOptions.map((r) => ({ value: r.region_code, label: r.region_name }))}
@@ -431,10 +451,10 @@ export default function Register() {
 							/>
 						</div>
 
-						<div className="grid grid-cols-2 gap-[clamp(0.5rem,1.5vw,1rem)]">
+						<div className={ROW}>
 							<FieldSelect
 								label="Province"
-								icon={<MapIcon className="h-4.5 w-4.5" />}
+								icon={<MapIcon className={iconClass} />}
 								value={provinceCode}
 								onChange={handleProvinceChange}
 								options={provinceOptions.map((p) => ({
@@ -446,7 +466,7 @@ export default function Register() {
 							/>
 							<FieldSelect
 								label="City / Municipality"
-								icon={<Building2 className="h-4.5 w-4.5" />}
+								icon={<Building2 className={iconClass} />}
 								value={cityCode}
 								onChange={handleCityChange}
 								options={cityOptions.map((c) => ({ value: c.city_code, label: c.city_name }))}
@@ -455,10 +475,10 @@ export default function Register() {
 							/>
 						</div>
 
-						<div className="grid grid-cols-2 gap-[clamp(0.5rem,1.5vw,1rem)]">
+						<div className={ROW}>
 							<FieldSelect
 								label="Barangay"
-								icon={<Home className="h-4.5 w-4.5" />}
+								icon={<Home className={iconClass} />}
 								value={barangayCode}
 								onChange={handleBarangayChange}
 								options={barangayOptions.map((b) => ({ value: b.brgy_code, label: b.brgy_name }))}
@@ -467,7 +487,7 @@ export default function Register() {
 							/>
 							<Input
 								label="House/Building No."
-								icon={<Hash className="h-4.5 w-4.5" />}
+								icon={<Hash className={iconClass} />}
 								placeholder="123 / Unit 4B"
 								value={houseNumber}
 								onChange={(e) => setHouseNumber(e.target.value)}
@@ -477,7 +497,7 @@ export default function Register() {
 
 						<Input
 							label="Street"
-							icon={<MapPin className="h-4.5 w-4.5" />}
+							icon={<MapPin className={iconClass} />}
 							placeholder="Rizal Street"
 							value={street}
 							onChange={(e) => setStreet(e.target.value)}
@@ -485,20 +505,20 @@ export default function Register() {
 						/>
 					</div>
 
-					{/* Reserved-height slot so an error appearing doesn't push the button
-					    out of the viewport on the shortest kiosk screens. */}
-					<p className="min-h-[1.1em] text-[clamp(0.6875rem,1.4dvh,0.8125rem)] text-red-500">{error}</p>
+					{/* Reserved-height slot so an error appearing doesn't shift the
+					    consent box and button below it. */}
+					<p role="alert" className="min-h-[1.75rem] text-lg text-red-500">{error}</p>
 
-					<div className="consent-box flex flex-col gap-[clamp(0.375rem,1dvh,0.75rem)] rounded-xl border border-line bg-accent-tint/25 p-[clamp(0.5rem,1.4dvh,1rem)]">
-						<label className="flex cursor-pointer items-start gap-3">
+					<div className="consent-box flex flex-col gap-4 rounded-xl border border-line bg-accent-tint/25 p-5">
+						<label className="flex cursor-pointer items-start gap-4">
 							<input
 								type="checkbox"
 								checked={agreedToTerms}
 								onChange={(e) => setAgreedToTerms(e.target.checked)}
 								required
-								className="mt-0.5 h-[clamp(1.25rem,3dvh,1.5rem)] w-[clamp(1.25rem,3dvh,1.5rem)] shrink-0 rounded border-line text-accent focus:ring-2 focus:ring-accent/30"
+								className="mt-0.5 h-7 w-7 shrink-0 rounded border-line text-accent focus:ring-2 focus:ring-accent/30"
 							/>
-							<span className="text-[clamp(0.75rem,1.5dvh,0.84375rem)] leading-snug text-ink">
+							<span className="text-lg leading-relaxed text-ink">
 								I agree to the{" "}
 								<button
 									type="button"
@@ -527,15 +547,15 @@ export default function Register() {
 							</span>
 						</label>
 
-						<label className="flex cursor-pointer items-start gap-3">
+						<label className="flex cursor-pointer items-start gap-4">
 							<input
 								type="checkbox"
 								checked={consentedToHealthData}
 								onChange={(e) => setConsentedToHealthData(e.target.checked)}
 								required
-								className="mt-0.5 h-[clamp(1.25rem,3dvh,1.5rem)] w-[clamp(1.25rem,3dvh,1.5rem)] shrink-0 rounded border-line text-accent focus:ring-2 focus:ring-accent/30"
+								className="mt-0.5 h-7 w-7 shrink-0 rounded border-line text-accent focus:ring-2 focus:ring-accent/30"
 							/>
-							<span className="text-[clamp(0.75rem,1.5dvh,0.84375rem)] leading-snug text-ink">
+							<span className="text-lg leading-relaxed text-ink">
 								I consent to the collection and processing of my health assessment data for this system.
 							</span>
 						</label>
@@ -545,7 +565,7 @@ export default function Register() {
 						{loading ? "Creating account…" : "Create Account"}
 					</Button>
 
-					<p className="text-center text-[clamp(0.75rem,1.5dvh,0.8125rem)] text-muted">
+					<p className="text-center text-lg text-muted">
 						Already have an account?{" "}
 						<Link to="/login" className="font-medium text-accent hover:text-accent-deep">
 							Sign in

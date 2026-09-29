@@ -14,8 +14,8 @@ import {
 	ScrollText,
 	ScanLine,
 } from "lucide-react";
-import { useAuth } from "../hooks/useAuth";
-import type { UserRole } from "../types/User";
+import { useAuth } from "@generick/shared";
+import type { UserRole } from "@generick/shared";
 
 interface NavItem {
 	label: string;

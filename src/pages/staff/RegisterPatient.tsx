@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { CheckCircle2, User, Phone, MapPin, ScanLine, Calendar, Mail, Building2 } from "lucide-react";
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
-import Input from "../../components/Input";
-import Button from "../../components/Button";
-import { registerPatient } from "../../services/patient";
-import { patientFullName } from "../../utils/helpers";
-import { RAW_PROGRAMS } from "../../data/programs";
-import type { PatientType, Sex } from "../../types/Patient";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
+import { Input } from "@generick/shared";
+import { Button } from "@generick/shared";
+import { registerPatient } from "@generick/shared";
+import { patientFullName } from "@generick/shared";
+import { RAW_PROGRAMS } from "@generick/shared";
+import type { PatientType, Sex } from "@generick/shared";
 
 interface RegisterPatientFormValues {
 	firstName: string;

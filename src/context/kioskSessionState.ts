@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
-import type { Patient } from "../types/Patient";
-import type { AssessmentResult } from "../types/Measurement";
+import type { Patient } from "@generick/shared";
+import type { AssessmentResult } from "@generick/shared";
 
 export interface KioskSessionValue {
 	patient: Patient | null;

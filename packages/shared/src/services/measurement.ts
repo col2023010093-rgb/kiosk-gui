@@ -1,13 +1,13 @@
-import { supabase } from "../lib/supabaseClient";
-import { getVitalStatus } from "../utils/helpers";
-import { VITAL_RANGES } from "../utils/constants";
+import { supabase } from "@generick/shared";
+import { getVitalStatus } from "@generick/shared";
+import { VITAL_RANGES } from "@generick/shared";
 import type {
 	AssessmentResult,
 	AssessmentType,
 	HealthRecord,
 	SensorKey,
 	VitalStatus,
-} from "../types/Measurement";
+} from "@generick/shared";
 
 function randomBetween(min: number, max: number) {
 	return Math.random() * (max - min) + min;

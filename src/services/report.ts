@@ -1,4 +1,4 @@
-import type { Report } from "../types/Report";
+import type { Report } from "@generick/shared";
 
 /**
  * Static placeholder data — there is no `reports` table or Supabase query
@@ -23,7 +23,7 @@ export const mockReports: Report[] = [
 	},
 ];
 
-export function listReports(): Report[] {
+export async function listReports(): Promise<Report[]> {
 	return mockReports;
 }
 

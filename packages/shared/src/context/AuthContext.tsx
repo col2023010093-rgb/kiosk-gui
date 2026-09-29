@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import type { User } from "../types/User";
+import type { User } from "@generick/shared";
 import { AuthContext } from "./authContextState";
-import { supabase } from "../lib/supabaseClient";
-import { fetchProfileForAuthId, loginRequest, loginWithBarcodeRequest, logoutRequest } from "../services/auth";
+import { supabase } from "@generick/shared";
+import { fetchProfileForAuthId, loginRequest, loginWithBarcodeRequest, logoutRequest } from "@generick/shared";
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
 	const [loading, setLoading] = useState(true);

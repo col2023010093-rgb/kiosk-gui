@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, X, User } from "lucide-react";
-import { useKioskSession } from "../../hooks/useKioskSession";
-import { calculateAge, initialsFromName, patientFullName } from "../../utils/helpers";
+import { useKioskSession } from "../../context/KioskSessionContext";
+import { calculateAge, initialsFromName, patientFullName } from "@generick/shared";
 
 export default function PatientConfirm() {
 	const navigate = useNavigate();

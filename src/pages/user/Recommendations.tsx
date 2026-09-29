@@ -1,6 +1,6 @@
 import { CheckCircle2, Lightbulb, ShieldCheck } from "lucide-react";
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
 import { recommendations, healthInsights } from "../../data/mockHealth";
 
 const PRIORITY_STYLES: Record<string, string> = {

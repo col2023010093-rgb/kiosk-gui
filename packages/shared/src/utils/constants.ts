@@ -1,6 +1,9 @@
-import type { UserRole } from "../types/User";
+// packages/shared/src/utils/constants.ts
+import type { UserRole } from "../types"; // 👈 Relative import inside shared package
 
 export const APP_NAME = "VitalCheck";
+
+export const REPORTS_ARE_MOCK = true; // 👈 Added missing flag
 
 export const VITAL_RANGES = {
   bloodPressureSystolic: { normalMax: 120, monitorMax: 129 },

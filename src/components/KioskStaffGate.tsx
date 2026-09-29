@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { useKioskSession } from "../hooks/useKioskSession";
-
+import { useKioskSession } from "../../context/KioskSessionContext";
 export default function KioskStaffGate({ children }: { children: ReactNode }) {
 	const { staffUnlocked } = useKioskSession();
 

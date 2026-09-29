@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, UserPlus, ChevronRight } from "lucide-react";
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
-import Button from "../../components/Button";
-import { searchPatients } from "../../services/patient";
-import { calculateAge, patientFullName } from "../../utils/helpers";
-import type { Patient } from "../../types/Patient";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
+import { Button } from "@generick/shared";
+import { searchPatients } from "@generick/shared";
+import { calculateAge, patientFullName } from "@generick/shared";
+import type { Patient } from "@generick/shared";
 
 export default function Patients() {
 	const [query, setQuery] = useState("");

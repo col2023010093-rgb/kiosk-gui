@@ -1,11 +1,11 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthProvider } from "@generick/shared";
 import { KioskSessionProvider } from "../context/KioskSessionContext";
-import ProtectedRoute from "../components/ProtectedRoute";
+import { ProtectedRoute } from "@generick/shared";
 import KioskLayout from "../layouts/KioskLayout";
 import DashboardLayout from "../layouts/DashboardLayout";
 
-import type { UserRole } from "../types/User";
+import type { UserRole } from "@generick/shared";
 
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
@@ -41,6 +41,7 @@ import Settings from "../pages/admin/Settings";
 import SystemLogs from "../pages/admin/SystemLogs";
 
 import MyBarcode from "../pages/user/MyBarcode";
+import PublicBarcodeView from "../pages/PublicBarcodeView";
 
 // Kiosk screening flow (scan -> confirm -> measure -> results -> complete) now
 // requires a real login instead of the old unauthenticated 5-tap staff gate.
@@ -150,8 +151,15 @@ export default function AppRoutes() {
 					<Route path="recommendations" element={<Recommendations />} />
 					<Route path="history" element={<History />} />
 					<Route path="profile" element={<Profile />} />
-					<Route path="my-barcode" element={<MyBarcode />} />
 				</Route>
+
+				<Route path="my-barcode" element={<MyBarcode />} />
+
+				{/* Public, phone-facing check-in pass opened from the dashboard QR code.
+				    Intentionally outside ProtectedRoute: it is opened on the patient's own
+				    phone and reads only the ID + expiry carried in the link. */}
+				<Route path="/public-barcode" element={<PublicBarcodeView />} />
+
 
 				{/* Clinic staff role */}
 				<Route

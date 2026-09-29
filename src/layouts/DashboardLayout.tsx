@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Sidebar from "../components/Sidebar";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "@generick/shared";
 
 interface DashboardLayoutProps {
 	children: ReactNode;

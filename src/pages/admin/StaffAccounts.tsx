@@ -1,6 +1,6 @@
 import { ShieldCheck, ShieldOff } from "lucide-react";
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
 import { mockStaffAccounts } from "../../data/mockStaff";
 
 export default function StaffAccounts() {

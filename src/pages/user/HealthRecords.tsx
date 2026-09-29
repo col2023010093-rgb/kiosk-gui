@@ -1,4 +1,4 @@
-import Navbar from "../../components/Navbar";
+import { Navbar } from "@generick/shared";
 import { RecentMeasurementsTable } from "../../components/RecentMeasurementsTable";
 
 export default function HealthRecords() {

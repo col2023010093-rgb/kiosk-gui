@@ -1,10 +1,10 @@
-import { supabase } from "../lib/supabaseClient";
-import type { ProfileRow } from "../types/database";
-import type { User } from "../types/User";
+import { supabase } from "@generick/shared";
+import type { ProfileRow } from "@generick/shared";
+import type { User } from "@generick/shared";
 import {
 	validateAndNormalizeRegistration,
 	type RegistrationInput,
-} from "../utils/registrationValidation";
+} from "@generick/shared";
 
 export interface LoginResult {
 	success: boolean;

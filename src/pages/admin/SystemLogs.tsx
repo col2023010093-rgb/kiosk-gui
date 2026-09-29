@@ -1,6 +1,6 @@
 import { Info, AlertTriangle, AlertCircle } from "lucide-react";
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
 import { mockSystemLogs } from "../../data/mockLogs";
 import type { LogLevel } from "../../data/mockLogs";
 

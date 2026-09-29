@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
-import { listRecentHealthRecords } from "../../services/measurement";
-import type { HealthRecordWithPatient } from "../../services/measurement";
-import { getVitalStatus, patientFullName } from "../../utils/helpers";
-import type { VitalStatus } from "../../types/Measurement";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
+import { listRecentHealthRecords } from "@generick/shared";
+import type { HealthRecordWithPatient } from "@generick/shared";
+import { getVitalStatus, patientFullName } from "@generick/shared";
+import type { VitalStatus } from "@generick/shared";
 
 const STATUS_STYLES: Record<VitalStatus, string> = {
 	normal: "bg-good-tint text-good",

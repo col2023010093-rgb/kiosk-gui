@@ -2,10 +2,9 @@ import { useEffect } from "react";
 import type { ElementType } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
-import { useKioskSession } from "../../hooks/useKioskSession";
-import { getGenericRecommendations } from "../../utils/helpers";
+import { useKioskSession } from "../../context/KioskSessionContext";import { getGenericRecommendations } from "@generick/shared";
 import { DemoModeBanner } from "../../components/DemoModeBanner";
-import type { VitalStatus } from "../../types/Measurement";
+import type { VitalStatus } from "@generick/shared";
 
 const statusMeta: Record<VitalStatus, { label: string; className: string; Icon: ElementType }> = {
 	normal: { label: "Normal", className: "bg-good-tint text-good", Icon: CheckCircle2 },

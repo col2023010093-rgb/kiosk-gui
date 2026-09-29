@@ -1,6 +1,6 @@
-import { supabase } from "../lib/supabaseClient";
-import type { Patient } from "../types/Patient";
-import type { PatientRow, ProfileRow } from "../types/database";
+import { supabase } from "@generick/shared";
+import type { Patient } from "@generick/shared";
+import type { PatientRow, ProfileRow } from "@generick/shared";
 
 type PatientWithProfile = PatientRow & {
 	profiles: Pick<ProfileRow, "first_name" | "last_name" | "email"> | null;

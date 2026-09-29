@@ -1,6 +1,6 @@
-import type { HealthRecord, VitalStatus } from "../types/Measurement";
-import type { AssessmentResult } from "../types/Measurement";
-import type { Patient } from "../types/Patient";
+import type { HealthRecord, VitalStatus } from "@generick/shared";
+import type { AssessmentResult } from "@generick/shared";
+import type { Patient } from "@generick/shared";
 import { VITAL_RANGES } from "./constants";
 
 export interface Recommendation {

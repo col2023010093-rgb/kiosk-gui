@@ -1,7 +1,7 @@
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
 import { patientProfile } from "../../data/mockHealth";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "@generick/shared";
 
 export default function Profile() {
 	const { user } = useAuth();

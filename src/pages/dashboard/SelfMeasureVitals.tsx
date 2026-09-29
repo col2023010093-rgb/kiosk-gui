@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import type { ElementType } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Activity, HeartPulse, Droplet, Thermometer, Ruler, Check, Loader2, ArrowLeft } from "lucide-react";
-import { runAssessment, saveHealthRecord } from "../../services/measurement";
-import { getPatientByProfileId } from "../../services/patient";
-import { useAuth } from "../../hooks/useAuth";
+import { runAssessment, saveHealthRecord } from "@generick/shared";
+import { getPatientByProfileId } from "@generick/shared";
+import { useAuth } from "@generick/shared";
 import { DemoModeBanner } from "../../components/DemoModeBanner";
-import type { Patient } from "../../types/Patient";
-import type { AssessmentResult, AssessmentType } from "../../types/Measurement";
+import type { Patient } from "@generick/shared";
+import type { AssessmentResult, AssessmentType } from "@generick/shared";
 
 interface Step {
 key: string;

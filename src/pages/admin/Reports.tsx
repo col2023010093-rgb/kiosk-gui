@@ -1,9 +1,9 @@
 import { FileText } from "lucide-react";
-import Navbar from "../../components/Navbar";
-import Card from "../../components/Card";
+import { Navbar } from "@generick/shared";
+import { Card } from "@generick/shared";
 import { DemoModeBanner } from "../../components/DemoModeBanner";
-import { listReports, REPORTS_ARE_MOCK } from "../../services/report";
-
+import { REPORTS_ARE_MOCK } from "@generick/shared";
+import { listReports } from "../../services/report";
 export default function Reports() {
 	const reports = listReports();
 
@@ -44,7 +44,7 @@ export default function Reports() {
 						</div>
 					</Card>
 				))}
-			</div>
+			</div> 
 		</>
 	);
 }
