@@ -32,13 +32,15 @@ on the kiosk's own network. Lock it down before exposing it beyond that.
 """
 
 import time
+import os
 
 import VL53L1X
 from flask import Flask, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # allows the Vite dev server (different port) to fetch this during testing
+allowed_origins = [origin.strip() for origin in os.getenv("SENSOR_ALLOWED_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
+CORS(app, origins=allowed_origins)
 
 I2C_BUS = 1
 MOUNT_HEIGHT_CM = 200  # sensor's height off the floor — update if it's remounted
@@ -81,4 +83,4 @@ def get_height():
 if __name__ == "__main__":
     # host="0.0.0.0" so the frontend can reach it by the Pi's IP, not just localhost.
     # Port 5002: 5000 is sensor_server.py (temperature + heart-rate/SpO2).
-    app.run(host="0.0.0.0", port=5002)
+    app.run(host=os.getenv("SENSOR_HOST", "127.0.0.1"), port=5002)

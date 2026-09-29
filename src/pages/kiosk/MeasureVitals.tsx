@@ -21,10 +21,11 @@ const steps: Step[] = [
 
 export default function MeasureVitals() {
 const navigate = useNavigate();
-const { patient, setMeasurement } = useKioskSession();
+const { patient, setMeasurement, resetSession } = useKioskSession();
 const [activeIndex, setActiveIndex] = useState(0);
 const [doneIndexes, setDoneIndexes] = useState<number[]>([]);
 const [error, setError] = useState<string | null>(null);
+const [attempt, setAttempt] = useState(0);
 const startedRef = useRef(false);
 
 useEffect(() => {
@@ -62,7 +63,7 @@ setActiveIndex(index);
 }, 1100);
 
 return () => clearInterval(interval);
-}, [patient, navigate, setMeasurement]);
+}, [patient, navigate, setMeasurement, attempt]);
 
 if (!patient) return null;
 
@@ -71,9 +72,31 @@ if (error) {
 		<div className="flex min-h-screen flex-col items-center justify-center bg-bg px-6 text-center text-ink">
 			<h1 className="text-2xl font-bold">Measurement could not be completed</h1>
 			<p className="mt-2 max-w-sm text-sm text-muted">{error}</p>
-			<button type="button" onClick={() => navigate("/kiosk/scan", { replace: true })} className="mt-6 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">
-				Return to scan
-			</button>
+			<div className="mt-6 flex gap-3">
+				<button
+					type="button"
+					onClick={() => {
+						setError(null);
+						setDoneIndexes([]);
+						setActiveIndex(0);
+						startedRef.current = false;
+						setAttempt((value) => value + 1);
+					}}
+					className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white"
+				>
+					Retry
+				</button>
+				<button
+					type="button"
+					onClick={() => {
+						resetSession();
+						navigate("/kiosk/scan", { replace: true });
+					}}
+					className="rounded-xl border border-line bg-white px-5 py-3 text-sm font-semibold text-muted"
+				>
+					Return to scan
+				</button>
+			</div>
 		</div>
 	);
 }
@@ -119,6 +142,18 @@ isDone ? "bg-good text-white" : isActive ? "bg-primary text-white" : "bg-bg text
 </div>
 );
 })}
+</div>
+<div className="mt-8 flex w-full max-w-sm gap-3">
+<button
+	type="button"
+	onClick={() => {
+		resetSession();
+		navigate("/kiosk/scan", { replace: true });
+	}}
+	className="flex-1 rounded-xl border border-line bg-white py-3 text-sm font-semibold text-muted"
+>
+	Cancel
+</button>
 </div>
 </div>
 );
