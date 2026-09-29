@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { CheckCircle2, User, Phone, MapPin, ScanLine, Calendar, Mail, Building2 } from "lucide-react";
 import Navbar from "../../components/Navbar";
 import Card from "../../components/Card";
@@ -31,11 +31,11 @@ export default function RegisterPatient() {
 		register,
 		handleSubmit,
 		reset,
-		watch,
+		control,
 		formState: { errors, isSubmitting },
 	} = useForm<RegisterPatientFormValues>({ defaultValues: { sex: "female", patientType: "student" } });
 
-	const patientType = watch("patientType");
+	const patientType = useWatch({ control, name: "patientType" });
 	const isStudent = patientType === "student";
 
 	async function onSubmit(values: RegisterPatientFormValues) {

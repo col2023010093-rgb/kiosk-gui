@@ -24,7 +24,7 @@ export default function ScanBarcode() {
 					setPatient(found);
 					navigate("/kiosk/confirm");
 				} else {
-					navigate("/kiosk/not-registered", { state: { barcode: code } });
+					navigate("/kiosk/not-registered");
 				}
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "Could not look up this barcode.");

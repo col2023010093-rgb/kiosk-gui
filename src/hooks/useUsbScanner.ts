@@ -64,7 +64,9 @@ export function useUsbScanner(onScan: (code: string) => void, enabled = true, op
 
 	// Keep the latest callback without re-binding the global listener every render.
 	const onScanRef = useRef(onScan);
-	onScanRef.current = onScan;
+	useEffect(() => {
+		onScanRef.current = onScan;
+	}, [onScan]);
 
 	useEffect(() => {
 		if (!enabled) return;

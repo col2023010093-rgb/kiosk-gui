@@ -88,7 +88,6 @@ export default function Login() {
 			// that IdleScreen's "Tap to begin" sets `from` up for.
 			navigate(ROLE_HOME_ROUTE[result.role ?? "user"]);
 		},
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[scanning, loading, loginWithBarcode, navigate]
 	);
 	useUsbScanner(handleScan, !scanning && !loading);

@@ -17,7 +17,6 @@ export default function MyBarcode() {
 
 	useEffect(() => {
 		let cancelled = false;
-		setLoading(true);
 
 		getMyBarcode()
 			.then((value) => {

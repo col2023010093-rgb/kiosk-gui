@@ -40,8 +40,42 @@ type SensorReading = Pick<
 // Both sensor endpoints are served by the single consolidated sensor_server.py
 // on port 5000 (formerly two separate scripts on 5000 and 5001 — see that
 // file's docstring for the merge rationale).
-const HEART_RATE_SPO2_URL = "http://localhost:5000/api/heart-rate-spo2";
-const TEMPERATURE_URL = "http://localhost:5000/api/temperature";
+const SENSOR_BASE_URL = (import.meta.env.VITE_SENSOR_BASE_URL ?? "http://localhost:5000").replace(/\/$/, "");
+const HEART_RATE_SPO2_URL = `${SENSOR_BASE_URL}/api/heart-rate-spo2`;
+const TEMPERATURE_URL = `${SENSOR_BASE_URL}/api/temperature`;
+const SENSOR_TIMEOUT_MS = 12_000;
+
+async function readSensorResponse<T>(url: string, label: string): Promise<T> {
+	const controller = new AbortController();
+	const timeout = window.setTimeout(() => controller.abort(), SENSOR_TIMEOUT_MS);
+	try {
+		const response = await fetch(url, { signal: controller.signal });
+		const body: unknown = await response.json().catch(() => null);
+		if (!response.ok) {
+			const message =
+				typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
+					? body.error
+					: `${label} sensor request failed (${response.status})`;
+			throw new Error(message);
+		}
+		return body as T;
+	} catch (error) {
+		if (error instanceof DOMException && error.name === "AbortError") {
+			throw new Error(`${label} sensor timed out. Check that the device is connected and retry.`, { cause: error });
+		}
+		if (error instanceof Error) throw new Error(error.message, { cause: error });
+		throw new Error(`${label} sensor is unavailable.`, { cause: error });
+	} finally {
+		window.clearTimeout(timeout);
+	}
+}
+
+function requireFiniteNumber(value: unknown, label: string, min: number, max: number): number {
+	if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
+		throw new Error(`${label} sensor returned an invalid reading. Please retry.`);
+	}
+	return value;
+}
 
 interface SensorReader {
 	/**
@@ -81,25 +115,21 @@ const SENSOR_READERS: Record<SensorKey, SensorReader> = {
 	heartRateSpo2: {
 		simulated: false,
 		read: async () => {
-			const response = await fetch(HEART_RATE_SPO2_URL);
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}));
-				throw new Error(body.error ?? `Heart rate/SpO2 sensor request failed (${response.status})`);
-			}
-			const data: { bpm: number; spo2: number } = await response.json();
-			return { heartRate: data.bpm, oxygenSaturation: data.spo2 };
+			const data = await readSensorResponse<Partial<{ bpm: number; spo2: number }>>(
+				HEART_RATE_SPO2_URL,
+				"Heart rate/SpO2"
+			);
+			return {
+				heartRate: Math.round(requireFiniteNumber(data.bpm, "Heart rate", 30, 220)),
+				oxygenSaturation: Math.round(requireFiniteNumber(data.spo2, "Oxygen saturation", 70, 100)),
+			};
 		},
 	},
 	temperature: {
 		simulated: false,
 		read: async () => {
-			const response = await fetch(TEMPERATURE_URL);
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}));
-				throw new Error(body.error ?? `Temperature sensor request failed (${response.status})`);
-			}
-			const data: { celsius: number } = await response.json();
-			return { temperatureCelsius: data.celsius };
+			const data = await readSensorResponse<Partial<{ celsius: number }>>(TEMPERATURE_URL, "Temperature");
+			return { temperatureCelsius: round1(requireFiniteNumber(data.celsius, "Temperature", 25, 45)) };
 		},
 	},
 };
