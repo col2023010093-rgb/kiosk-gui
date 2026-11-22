@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Clock, HeartPulse, Home, Info, Mail } from "lucide-react";
-import { Input, Button, Toast, useAuth, type ToastMessage } from "@generick/shared";
+import { Activity, ArrowLeft, CheckCircle2, Clock, Home, Info, Mail } from "lucide-react";
+import { Input, Button, Toast, requestPasswordReset, type ToastMessage } from "@generick/shared";
 import VirtualKeyboard from "../../components/kiosk/VirtualKeyboard";
 import AccessibilityToolbar from "../../components/kiosk/AccessibilityToolbar";
 import { FONT_SCALES, type FontScaleIndex } from "../../lib/kioskAccessibility";
@@ -13,9 +13,17 @@ const IDLE_SCREEN_ROUTE = "/idle";
 const SIGN_IN_ROUTE = "/login";
 const TOAST_AUTO_DISMISS_MS = 5000;
 
+// Same field format as the Register screen: 56px tall, text-lg, text-lg labels,
+// 24px icons, default border-line with the accent focus ring.
+const FIELD_FORMAT =
+	"[&_input:not([type=checkbox])]:h-14 [&_input:not([type=checkbox])]:text-lg [&_label]:text-lg! [&_input:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_white_inset]";
+// Shown while the on-screen keyboard is typing into the field
+// (same look Register uses for an open dropdown).
+const FIELD_ACTIVE = "border-accent! ring-2 ring-accent/15";
+const ICON_CLASS = "h-6 w-6";
+
 const STRINGS: Record<LanguageCode, Record<string, string>> = {
 	en: {
-		lowerScreen: "Lower Screen",
 		a11yBarLabel: "Accessibility & Assistance",
 		fontSize: "Text size",
 		language: "Language",
@@ -23,13 +31,13 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		audioToggleOff: "Audio: OFF",
 		sessionEndsIn: "Session ends in",
 		seconds: "s",
-		eyebrow: "PATIENT AUTHENTICATION / RECOVERY",
+		eyebrow: "USER AUTHENTICATION / RECOVERY",
 		title: "Reset Your Password",
 		subtitle: "Enter your registered email address below to receive a password reset link.",
 		emailLabel: "Email Address",
 		sendLink: "Send Reset Link",
 		sending: "Sending…",
-		backToSignIn: "Back to Sign In",
+		backToSignIn: "Back to Log In",
 		sentTitle: "Check your email",
 		sentBody: "If an account exists for that address, a reset link is on its way.",
 		needAssistance: "Need Assistance?",
@@ -43,10 +51,8 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		sayAudioOn: "Audio guidance is on.",
 		sayAudioOff: "Audio guidance is off.",
 		sayScreen: "Reset your password. Use the on-screen keyboard to type your email address.",
-		sayBack: "Going back to sign in.",
+		sayBack: "Going back to log in.",
 		sayIdle: "Going to the idle screen.",
-		sayLowerOn: "Screen content lowered.",
-		sayLowerOff: "Screen content centered.",
 		sayTextSize: "Text size",
 		sayDeleted: "deleted",
 		saySpace: "space",
@@ -54,7 +60,6 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		sayDot: "dot",
 	},
 	es: {
-		lowerScreen: "Bajar pantalla",
 		a11yBarLabel: "Accesibilidad y asistencia",
 		fontSize: "Tamaño del texto",
 		language: "Idioma",
@@ -62,7 +67,7 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		audioToggleOff: "Audio: NO",
 		sessionEndsIn: "La sesión termina en",
 		seconds: "s",
-		eyebrow: "AUTENTICACIÓN DEL PACIENTE / RECUPERACIÓN",
+		eyebrow: "AUTENTICACIÓN DE USUARIO / RECUPERACIÓN",
 		title: "Restablezca su contraseña",
 		subtitle: "Ingrese su correo registrado para recibir un enlace de restablecimiento.",
 		emailLabel: "Correo electrónico",
@@ -84,8 +89,6 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		sayScreen: "Restablezca su contraseña. Use el teclado en pantalla para escribir su correo.",
 		sayBack: "Volviendo a iniciar sesión.",
 		sayIdle: "Yendo a la pantalla de inicio.",
-		sayLowerOn: "Contenido bajado.",
-		sayLowerOff: "Contenido centrado.",
 		sayTextSize: "Tamaño del texto",
 		sayDeleted: "borrado",
 		saySpace: "espacio",
@@ -93,7 +96,6 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		sayDot: "punto",
 	},
 	tl: {
-		lowerScreen: "Ibaba ang Screen",
 		a11yBarLabel: "Accessibility at Tulong",
 		fontSize: "Laki ng teksto",
 		language: "Wika",
@@ -101,13 +103,13 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		audioToggleOff: "Audio: OFF",
 		sessionEndsIn: "Matatapos ang session sa",
 		seconds: "s",
-		eyebrow: "PAGPAPATUNAY NG PASYENTE / RECOVERY",
+		eyebrow: "PAGPAPATUNAY NG USER / RECOVERY",
 		title: "I-reset ang Password",
 		subtitle: "Ilagay ang rehistradong email para makatanggap ng reset link.",
 		emailLabel: "Email Address",
 		sendLink: "Ipadala ang Reset Link",
 		sending: "Ipinapadala…",
-		backToSignIn: "Bumalik sa Sign In",
+		backToSignIn: "Bumalik sa Log In",
 		sentTitle: "Tingnan ang iyong email",
 		sentBody: "Kung may account sa email na iyon, papunta na ang reset link.",
 		needAssistance: "Kailangan ng Tulong?",
@@ -121,10 +123,8 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		sayAudioOn: "Naka-on ang audio guidance.",
 		sayAudioOff: "Naka-off ang audio guidance.",
 		sayScreen: "I-reset ang password. Gamitin ang keyboard sa screen para i-type ang email.",
-		sayBack: "Bumabalik sa sign in.",
+		sayBack: "Bumabalik sa log in.",
 		sayIdle: "Pupunta sa idle screen.",
-		sayLowerOn: "Ibinaba ang nilalaman.",
-		sayLowerOff: "Nasa gitna ang nilalaman.",
 		sayTextSize: "Laki ng teksto",
 		sayDeleted: "binura",
 		saySpace: "espasyo",
@@ -138,13 +138,8 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPassword() {
 	const navigate = useNavigate();
-	// TODO: confirm the real method name on useAuth(); falls back to a no-op so the UI flow can be tested.
-	const auth = useAuth() as unknown as {
-		requestPasswordReset?: (email: string) => Promise<{ success: boolean; error?: string }>;
-	};
 
 	// --- Accessibility controls (same as Login / Dashboard) ---
-	const [lowerScreen, setLowerScreen] = useState(false);
 	const [fontStep, setFontStep] = useState<FontScaleIndex>(1);
 	const [audioEnabled, setAudioEnabled] = useState(false);
 	const [language, setLanguage] = useState<LanguageCode>("en");
@@ -238,13 +233,14 @@ export default function ForgotPassword() {
 		setLoading(true);
 		speak(t("sending"));
 		try {
-			const result = auth.requestPasswordReset ? await auth.requestPasswordReset(trimmed) : { success: true };
-			if (!result.success) {
+			const result = await requestPasswordReset(trimmed);
+			if (!result.sent) {
 				setError(result.error ?? t("genericError"));
 				speak(result.error ?? t("genericError"));
 				return;
 			}
 			setSent(true);
+				setEmail("");
 			speak(`${t("sentTitle")}. ${t("sentBody")}`);
 		} catch {
 			setError(t("genericError"));
@@ -279,11 +275,6 @@ export default function ForgotPassword() {
 	}
 
 	// --- Toolbar handlers ---
-	function handleToggleLowerScreen() {
-		const next = !lowerScreen;
-		setLowerScreen(next);
-		speak(t(next ? "sayLowerOn" : "sayLowerOff"));
-	}
 	function handleFontStepChange(step: FontScaleIndex) {
 		setFontStep(step);
 		speak(`${t("sayTextSize")} ${Math.round(FONT_SCALES[step] * 100)} %`);
@@ -300,7 +291,6 @@ export default function ForgotPassword() {
 			<AccessibilityToolbar
 				strings={{
 					a11yBarLabel: t("a11yBarLabel"),
-					lowerScreen: t("lowerScreen"),
 					fontSize: t("fontSize"),
 					language: t("language"),
 					audioToggleOn: t("audioToggleOn"),
@@ -311,8 +301,6 @@ export default function ForgotPassword() {
 					setLanguage(l as LanguageCode);
 					speak(STRINGS[l as LanguageCode].title, false, l as LanguageCode);
 				}}
-				lowerScreen={lowerScreen}
-				onToggleLowerScreen={handleToggleLowerScreen}
 				fontStep={fontStep}
 				onFontStepChange={handleFontStepChange}
 				audioGuidance={audioEnabled}
@@ -321,13 +309,14 @@ export default function ForgotPassword() {
 
 			{/* ===== Row 2: branding + session badge ===== */}
 			<div style={zoomStyle} className="relative flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-6 sm:px-8">
-				<div className="flex items-center gap-5">
-					<div className="animate-pulse-glow flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-deep shadow-[0_0_10px_-2px_rgba(20,184,166,0.55)]">
-						<HeartPulse className="h-9 w-9 text-white" strokeWidth={2.25} />
+				{/* Logo: identical to the Dashboard's */}
+				<div className="flex items-center gap-4">
+					<div className="animate-pulse-glow flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00A896] shadow-[0_0_10px_-2px_rgba(0,168,150,0.55)]">
+						<Activity className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden="true" />
 					</div>
 					<div className="leading-tight">
-						<div className="text-3xl font-extrabold text-[#0F172A]">GenErick</div>
-						<div className="mt-1 text-base font-semibold uppercase tracking-[2px] text-[#334155] sm:text-lg">
+						<div className="text-xl font-extrabold text-[#17212B]">GenErick</div>
+						<div className="text-xs font-semibold uppercase tracking-[2px] text-[#52616B]">
 							Patient Health Monitoring Kiosk
 						</div>
 					</div>
@@ -356,11 +345,7 @@ export default function ForgotPassword() {
 			>
 				{/* my-auto centers the card vertically; when the keyboard opens the
 				    scroll area shrinks and the card rides up with it. */}
-				<div
-					className={`mx-auto flex w-full max-w-[960px] flex-col gap-6 transition-all duration-200 ${
-						lowerScreen && !keyboardOpen ? "mt-auto" : "my-auto"
-					}`}
-				>
+				<div className="mx-auto my-auto flex w-full max-w-[960px] flex-col gap-6 transition-all duration-200">
 					{/* Card */}
 					<section
 						className={`box-border flex w-full flex-col rounded-3xl border border-[#E2E8F0] bg-white px-12 transition-[padding] duration-200 sm:px-14 ${
@@ -413,25 +398,21 @@ export default function ForgotPassword() {
 								</div>
 							</div>
 						) : (
-							<form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-6 [&_label]:text-[24px]! [&_label]:font-bold! [&_label]:leading-snug">
+							<form onSubmit={handleSubmit} className={`mt-8 flex flex-col gap-5 ${FIELD_FORMAT}`}>
 								<Input
 									label={t("emailLabel")}
 									type="email"
 									placeholder="you@example.com"
-									icon={<Mail className="h-6 w-6" />}
+									icon={<Mail className={ICON_CLASS} />}
 									value={email}
-									onChange={(e) => setEmail(e.target.value)}
+									onChange={(e) => handleKeyboardChange(e.target.value)}
 									autoComplete="username"
-									// Typing happens on the on-screen keyboard; keep the native one from popping up.
-									readOnly
+									// On-screen keyboard or a physical keyboard both work; inputMode="none" blocks the native touch keyboard.
+									inputMode="none"
 									onFocus={() => setKeyboardOpen(true)}
 									onClick={() => setKeyboardOpen(true)}
 									aria-invalid={!!error}
-									className={`h-20 rounded-xl border-2 text-[26px]! placeholder:text-[24px]! transition-colors ${
-										keyboardOpen
-											? "border-[#0284C7] bg-[#F0F9FF] ring-[3px] ring-[#0284C7]"
-											: "border-[#64748B] bg-white"
-									}`}
+									className={keyboardOpen ? FIELD_ACTIVE : ""}
 								/>
 
 								<Button

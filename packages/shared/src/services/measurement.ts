@@ -1,4 +1,4 @@
-import { supabase } from "@generick/shared";
+import { supabase, saveRecordLocal, LocalApiUnavailableError } from "@generick/shared";
 import { getVitalStatus } from "@generick/shared";
 import { VITAL_RANGES } from "@generick/shared";
 import type {
@@ -16,6 +16,8 @@ function randomBetween(min: number, max: number) {
 function round1(value: number) {
 	return Math.round(value * 10) / 10;
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ASSESSMENT_SENSORS: Record<AssessmentType, SensorKey[]> = {
 	bmi: ["heightWeight"],
@@ -37,35 +39,68 @@ type SensorReading = Pick<
 	| "temperatureCelsius"
 >;
 
-// Both sensor endpoints are served by the single consolidated sensor_server.py
-// on port 5000 (formerly two separate scripts on 5000 and 5001 — see that
-// file's docstring for the merge rationale).
-const HEART_RATE_SPO2_URL = "http://localhost:5000/api/heart-rate-spo2";
-const TEMPERATURE_URL = "http://localhost:5000/api/temperature";
+// All sensor endpoints are served by the single consolidated sensor_server.py
+// on port 5000.
+const HEIGHT_URL = "/api/height";
+const WEIGHT_URL = "/api/weight";
+const HEART_RATE_SPO2_URL = "/api/heart-rate-spo2";
+const TEMPERATURE_URL = "/api/temperature";
+
+const MIN_HEIGHT_CM = 100;
+const MAX_HEIGHT_CM = 220;
+
+type ProgressCallback = (partial: Partial<SensorReading>) => void;
 
 interface SensorReader {
 	/**
 	 * True if this reader returns placeholder data instead of a real
 	 * hardware reading. Set to false once the corresponding physical sensor
-	 * (see height_sensor_server.py, a future BP sensor server) is wired up.
+	 * (e.g. a future BP sensor server) is wired up.
 	 */
 	simulated: boolean;
-	read: () => Promise<Partial<SensorReading>>;
+	/** `onPartial` lets a reader report values as soon as each one is ready. */
+	read: (onPartial?: ProgressCallback) => Promise<Partial<SensorReading>>;
 }
 
-// Physical sensor capture — unrelated to Supabase, left as-is. heightWeight
-// and bloodPressure still have no hardware endpoint wired up (see
-// height_sensor_server.py, which exists but isn't called from here yet), so
-// those two readers return simulated data and are flagged `simulated: true`.
-// runAssessment uses that flag to mark the whole result as simulated, and
-// saveHealthRecord refuses to persist a simulated result — see below.
+/** Fetches a sensor endpoint and surfaces the server's { error } message on failure. */
+async function fetchSensor<T>(url: string, label: string): Promise<T> {
+	const response = await fetch(url);
+	if (!response.ok) {
+		const body = await response.json().catch(() => ({}));
+		throw new Error(body.error ?? `${label} sensor request failed (${response.status})`);
+	}
+	return response.json();
+}
+
+// Physical sensor capture — unrelated to Supabase, left as-is. heightWeight,
+// heartRateSpo2 and temperature read from real hardware via sensor_server.py.
+// bloodPressure still has no hardware endpoint wired up, so it returns
+// simulated data and is flagged `simulated: true`. runAssessment uses that
+// flag to mark the whole result as simulated, and saveHealthRecord refuses to
+// persist a simulated result — see below.
 const SENSOR_READERS: Record<SensorKey, SensorReader> = {
 	heightWeight: {
-		simulated: true,
-		read: async () => {
-			const heightCm = 162;
-			const weightKg = round1(randomBetween(58, 72));
+		simulated: false,
+		read: async (onPartial) => {
+			// Sequential on purpose: sensor_server.py runs with threaded=False.
+			// 1) Height
+			const { heightCm: rawHeight } = await fetchSensor<{ heightCm: number }>(HEIGHT_URL, "Height");
+			const heightCm = round1(rawHeight);
+			if (heightCm < MIN_HEIGHT_CM || heightCm > MAX_HEIGHT_CM) {
+				throw new Error(`Implausible height reading (${Math.round(heightCm)} cm). Please stand straight under the sensor.`);
+			}
+			onPartial?.({ heightCm });
+
+			// 2) Weight (waits for the person to stand still)
+			const { weightKg: rawWeight } = await fetchSensor<{ weightKg: number }>(WEIGHT_URL, "Weight");
+			const weightKg = round1(rawWeight);
+			onPartial?.({ weightKg });
+
+			// 3) BMI, calculated from the two. Short pause so the UI visibly "calculates".
+			await sleep(800);
 			const bmi = round1(weightKg / (heightCm / 100) ** 2);
+			onPartial?.({ bmi });
+
 			return { heightCm, weightKg, bmi };
 		},
 	},
@@ -81,24 +116,14 @@ const SENSOR_READERS: Record<SensorKey, SensorReader> = {
 	heartRateSpo2: {
 		simulated: false,
 		read: async () => {
-			const response = await fetch(HEART_RATE_SPO2_URL);
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}));
-				throw new Error(body.error ?? `Heart rate/SpO2 sensor request failed (${response.status})`);
-			}
-			const data: { bpm: number; spo2: number } = await response.json();
+			const data = await fetchSensor<{ bpm: number; spo2: number }>(HEART_RATE_SPO2_URL, "Heart rate/SpO2");
 			return { heartRate: data.bpm, oxygenSaturation: data.spo2 };
 		},
 	},
 	temperature: {
 		simulated: false,
 		read: async () => {
-			const response = await fetch(TEMPERATURE_URL);
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}));
-				throw new Error(body.error ?? `Temperature sensor request failed (${response.status})`);
-			}
-			const data: { celsius: number } = await response.json();
+			const data = await fetchSensor<{ celsius: number }>(TEMPERATURE_URL, "Temperature");
 			return { temperatureCelsius: data.celsius };
 		},
 	},
@@ -130,14 +155,22 @@ function computeStatus(reading: Partial<SensorReading>): VitalStatus {
 }
 
 /** Runs the requested sensors and returns an in-memory reading. Does NOT persist it. */
-export async function runAssessment(patientId: string, testType: AssessmentType): Promise<AssessmentResult> {
+export async function runAssessment(
+	patientId: string,
+	testType: AssessmentType,
+	onProgress?: (partial: Partial<AssessmentResult>) => void
+): Promise<AssessmentResult> {
 	const sensors = ASSESSMENT_SENSORS[testType];
 	const reading: Partial<SensorReading> = {};
 	const simulatedSensors: SensorKey[] = [];
 	for (const sensorKey of sensors) {
 		const reader = SENSOR_READERS[sensorKey];
-		const partial = await reader.read();
+		const partial = await reader.read((p) => {
+			Object.assign(reading, p);
+			onProgress?.({ ...reading });
+		});
 		Object.assign(reading, partial);
+		onProgress?.({ ...reading });
 		if (reader.simulated) simulatedSensors.push(sensorKey);
 	}
 
@@ -173,6 +206,41 @@ export async function saveHealthRecord(
 				`(${result.simulatedSensors.join(", ")}). Connect the real sensor(s) before this can be recorded.`
 		);
 	}
+        // Local SQLite first; the sync worker forwards it to Supabase later.
+        // Only "service unreachable" falls through to the direct Supabase insert below.
+        try {
+                const saved = await saveRecordLocal({
+                        patient_id: result.patientId,
+                        measured_by: opts.measuredBy ?? null,
+                        systolic_bp: result.bloodPressureSystolic ?? null,
+                        diastolic_bp: result.bloodPressureDiastolic ?? null,
+                        heart_rate: result.heartRate ?? null,
+                        temperature: result.temperatureCelsius ?? null,
+                        spo2: result.oxygenSaturation ?? null,
+                        height_cm: result.heightCm ?? null,
+                        weight_kg: result.weightKg ?? null,
+                        bmi: result.bmi ?? null,
+                        measured_at: result.recordedAt,
+                });
+                return {
+                        record_id: saved.record_id,
+                        patient_id: result.patientId,
+                        kiosk_id: opts.kioskId ?? null,
+                        measured_by: opts.measuredBy ?? null,
+                        systolic: result.bloodPressureSystolic ?? null,
+                        diastolic: result.bloodPressureDiastolic ?? null,
+                        heart_rate: result.heartRate ?? null,
+                        temperature: result.temperatureCelsius ?? null,
+                        spo2: result.oxygenSaturation ?? null,
+                        height: result.heightCm ?? null,
+                        weight: result.weightKg ?? null,
+                        bmi: result.bmi ?? null,
+                        measured_at: result.recordedAt,
+                } as HealthRecord;
+        } catch (err) {
+                if (!(err instanceof LocalApiUnavailableError)) throw err;
+                console.warn("Local database unavailable; saving directly to Supabase.");
+        }
 
 	const { data, error } = await supabase
 		.from("health_records")

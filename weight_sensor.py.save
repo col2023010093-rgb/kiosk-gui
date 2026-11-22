@@ -1,0 +1,389 @@
+Local API for the kiosk's temperature, heart-rate/SpO2 and weight sensors,
+serving readings to the kiosk web app over HTTP.
+
+Height is NOT served here. It lives in height_sensor_server.py (port 5002),
+so only one process ever talks to the VL53L1X distance sensor.
+
+Hardware:
+  MLX90614 IR temperature sensor, wired over I2C, default address 0x5A.
+  MAX30102 pulse oximetry sensor, wired over I2C, default address 0x57.
+  Make sure I2C is enabled: `sudo raspi-config` -> Interface Options -> I2C.
+  Check both are detected: `i2cdetect -y 1` should show 5a and 57.
+  HX711 + load cells (weight) on GPIO 5 (DT) and GPIO 6 (SCK), handled by
+  weight_sensor.py, which must sit in the same folder as this script.
+
+Weight setup (do this with this server STOPPED, since both use the GPIO pins):
+  python3 weight_sensor.py calibrate 20     # 20 = known weight in kg
+  Re-zero later with the platform empty:
+  curl -X POST http://localhost:5000/api/calibration/weight/tare
+
+Driver:
+  MLX90614 uses the `mlx90614` PyPI package directly.
+  MAX30102 uses the community driver from doug-burrell/max30102. Download
+  these THREE files from https://github.com/doug-burrell/max30102 and place
+  them in the same folder as this script:
+    - max30102.py
+    - hrcalc.py
+    - heartrate_monitor.py
+
+Install:
+  pip install flask flask-cors smbus2 mlx90614 numpy
+
+Run:
+  python3 sensor_server.py
+  -> http://<pi-ip>:5000/api/temperature      (~10 s)
+  -> http://<pi-ip>:5000/api/heart-rate-spo2  (~12 s)
+  -> http://<pi-ip>:5000/api/weight           (up to ~15 s, waits for a steady reading)
+
+TEMPERATURE CALIBRATION, saved to calibration.json next to this script so it
+survives reboots. Use `localhost` when running on the Pi itself.
+
+  Forehead 3-5 cm from the sensor, and take the reference thermometer reading
+  at the same moment (ideally a forehead/temporal IR thermometer, so both
+  measure the same site). Repeat on several people; the offset is the MEDIAN
+  of (reference - kiosk) across the saved samples.
+      curl -X POST http://localhost:5000/api/calibration/temperature \
+           -H "Content-Type: application/json" -d '{"referenceCelsius": 36.6}'
+
+  Inspect / reset:
+      curl http://localhost:5000/api/calibration
+      curl -X POST http://localhost:5000/api/calibration/temperature/reset
+
+  Optional protection: set CALIBRATION_TOKEN in the environment and send it
+  as the X-Calibration-Token header on every calibration POST, so kiosk users
+  can't recalibrate the device.
+      CALIBRATION_TOKEN=mysecret python3 sensor_server.py
+
+  SpO2 still uses the SPO2_OFFSET constant below (reference oximeter - kiosk).
+
+  NOTE: this script reads `hrm.spo2`. If SpO2 always fails, your
+  heartrate_monitor.py probably only prints SpO2 and never stores it. In
+  that file's run_sensor(), after hrcalc returns, add `self.spo2 = spo2`.
+
+Timing: both endpoints block while collecting data and return one result.
+The frontend fetch timeout must be longer than 12 s (e.g. 15 s). Temperature
+calibration also takes ~10 s because it runs a normal temperature reading.
+
+Deliberately simple (one file, optional token only) for local testing on the
+kiosk's own network. Lock it down before exposing it beyond that.
+"""
+
+import json
+import os
+import statistics
+import time
+from datetime import datetime, timezone
+from functools import wraps
+from pathlib import Path
+
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from smbus2 import SMBus
+from mlx90614 import MLX90614
+from heartrate_monitor import HeartRateMonitor
+
+app = Flask(__name__)
+CORS(app)  # allows the Vite dev server (different port) to fetch this during testing
+
+I2C_BUS = 1
+
+# --- Calibration storage ----------------------------------------------------
+
+CALIBRATION_FILE = Path(__file__).with_name("calibration.json")
+CALIBRATION_TOKEN = os.environ.get("CALIBRATION_TOKEN")
+MAX_CAL_SAMPLES = 10  # keep the most recent reference samples
+
+
+class CalibrationError(Exception):
+    """Calibration could not be completed; message is safe to show the installer."""
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _default_calibration() -> dict:
+    return {
+        "temperature": {
+            "offsetC": 0.0,  # reference thermometer - kiosk reading
+            "samples": [],
+        },
+    }
+
+
+def load_calibration() -> dict:
+    cal = _default_calibration()
+    try:
+        with open(CALIBRATION_FILE, "r", encoding="utf-8") as f:
+            stored = json.load(f)
+        if not isinstance(stored, dict):
+            stored = {}
+        for section, defaults in cal.items():
+            stored_section = stored.get(section)
+            if isinstance(stored_section, dict):
+                for key in defaults:
+                    if key in stored_section:
+                        defaults[key] = stored_section[key]
+    except (OSError, ValueError):
+        # Missing or corrupt file: fall back to defaults rather than crash the kiosk.
+        pass
+    return cal
+
+
+def save_calibration() -> None:
+    tmp = CALIBRATION_FILE.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(calibration, f, indent=2)
+    os.replace(tmp, CALIBRATION_FILE)  # atomic: never leaves a half-written file
+
+
+calibration = load_calibration()
+
+
+def _offset_from_samples(samples: list) -> float:
+    """Median of (reference - raw) across saved samples."""
+    return round(statistics.median(s["reference"] - s["raw"] for s in samples), 2)
+
+
+def require_token(fn):
+    """If CALIBRATION_TOKEN is set, calibration POSTs must send it."""
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if CALIBRATION_TOKEN and request.headers.get("X-Calibration-Token") != CALIBRATION_TOKEN:
+            return jsonify({"error": "Calibration token missing or incorrect"}), 401
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+# --- Temperature (MLX90614) -------------------------------------------------
+
+TEMP_SENSOR_ADDRESS = 0x5A
+
+TEMP_SAMPLE_SECONDS = 10
+TEMP_SAMPLE_INTERVAL = 0.25
+TEMP_WARMUP_SECONDS = 1.0  # ignore the first moments while the user settles
+TEMP_TRIM_FRACTION = 0.2  # drop this fraction from EACH end (spikes/dips)
+TEMP_MAX_SPREAD_C = 0.5  # if the kept readings vary more than this, user moved
+TEMP_VALID_RANGE_C = (25.0, 45.0)  # skin readings outside this are garbage
+
+TEMP_REFERENCE_RANGE_C = (34.0, 42.0)  # accepted reference thermometer values
+TEMP_MAX_OFFSET_C = 3.0  # a bigger correction means a bad reference or bad placement
+
+
+def read_raw_object_temperature_celsius() -> float:
+    """Stable, filtered reading with NO calibration offset applied."""
+    bus = SMBus(I2C_BUS)
+    try:
+        sensor = MLX90614(bus, address=TEMP_SENSOR_ADDRESS)
+        readings = []
+        start = time.time()
+        end = start + TEMP_SAMPLE_SECONDS
+        while time.time() < end:
+            value = sensor.get_obj_temp()
+            if (
+                time.time() - start >= TEMP_WARMUP_SECONDS
+                and TEMP_VALID_RANGE_C[0] <= value <= TEMP_VALID_RANGE_C[1]
+            ):
+                readings.append(value)
+            time.sleep(TEMP_SAMPLE_INTERVAL)
+
+        # Need most of the window to be usable, otherwise forehead wasn't in range
+        if len(readings) < 20:
+            raise ValueError("No reliable reading - keep forehead 3-5 cm from the sensor")
+
+        readings.sort()
+        trim = int(len(readings) * TEMP_TRIM_FRACTION)
+        core = readings[trim:len(readings) - trim] or readings
+
+        if statistics.pstdev(core) > TEMP_MAX_SPREAD_C:
+            raise ValueError("Movement detected - stay completely still and retry")
+
+        return statistics.median(core)
+    finally:
+        bus.close()
+
+
+def read_object_temperature_celsius() -> float:
+    raw = read_raw_object_temperature_celsius()
+    return round(raw + calibration["temperature"]["offsetC"], 1)
+
+
+@app.route("/api/temperature", methods=["GET"])
+def get_temperature():
+    try:
+        return jsonify({"celsius": read_object_temperature_celsius()}), 200
+    except Exception as exc:
+        print("ERROR:", exc, flush=True)
+        return jsonify({"error": str(exc)}), 500
+
+
+def calibrate_temperature(reference_c: float) -> dict:
+    """Take a normal reading, compare to the reference thermometer, store the sample."""
+    low, high = TEMP_REFERENCE_RANGE_C
+    if not (low <= reference_c <= high):
+        raise CalibrationError(f"referenceCelsius must be between {low} and {high}.")
+
+    raw = read_raw_object_temperature_celsius()  # ValueError here = bad placement/movement
+    difference = reference_c - raw
+    if abs(difference) > TEMP_MAX_OFFSET_C:
+        raise CalibrationError(
+            f"Kiosk read {raw:.1f} C but the reference says {reference_c:.1f} C "
+            f"(difference {difference:+.1f} C, more than {TEMP_MAX_OFFSET_C} C). "
+            "Check the reference value and that the forehead was 3-5 cm from the sensor."
+        )
+
+    section = calibration["temperature"]
+    samples = (section["samples"] + [{
+        "raw": round(raw, 2),
+        "reference": round(reference_c, 2),
+        "at": _now_iso(),
+    }])[-MAX_CAL_SAMPLES:]
+    section["samples"] = samples
+    section["offsetC"] = _offset_from_samples(samples)
+    save_calibration()
+
+    return {
+        "rawCelsius": round(raw, 2),
+        "referenceCelsius": round(reference_c, 2),
+        "offsetC": section["offsetC"],
+        "sampleCount": len(samples),
+        "samples": samples,
+    }
+
+
+@app.route("/api/calibration/temperature", methods=["POST"])
+@require_token
+def post_calibrate_temperature():
+    body = request.get_json(silent=True) or {}
+    try:
+        reference_c = float(body.get("referenceCelsius"))
+    except (TypeError, ValueError):
+        return jsonify({"error": 'Send JSON like {"referenceCelsius": 36.6}'}), 400
+    try:
+        return jsonify(calibrate_temperature(reference_c)), 200
+    except (CalibrationError, ValueError) as exc:
+        print("CALIBRATION:", exc, flush=True)
+        return jsonify({"error": str(exc)}), 422
+    except Exception as exc:
+        print("ERROR:", exc, flush=True)
+        return jsonify({"error": f"Sensor error: {exc}"}), 500
+
+
+@app.route("/api/calibration/temperature/reset", methods=["POST"])
+@require_token
+def post_reset_temperature_calibration():
+    calibration["temperature"] = _default_calibration()["temperature"]
+    save_calibration()
+    return jsonify(calibration["temperature"]), 200
+
+
+# --- Heart rate / SpO2 (MAX30102) -------------------------------------------
+
+SAMPLE_SECONDS = 12  # total time: calibration + sampling
+CALIBRATION_SECONDS = 3  # let the sensor's signal gain settle before reading
+POLL_INTERVAL = 1.0  # read the running bpm/spo2 once per second
+
+BPM_MIN, BPM_MAX = 40, 200
+SPO2_MIN, SPO2_MAX = 70, 100
+MIN_VALID_SAMPLES = 4  # of ~9 polls, need at least this many good ones
+MAX_BPM_SPREAD = 40  # kept bpm values varying more than this = unstable
+SPO2_OFFSET = 0  # CALIBRATE: reference oximeter - kiosk reading
+
+PLACEMENT_MSG = (
+    "No reliable reading - lay your finger flat and gently on the sensor, "
+    "don't press hard, and keep still"
+)
+
+
+def read_heart_rate_and_spo2() -> dict:
+    hrm = HeartRateMonitor(print_raw=False, print_result=False)
+    hrm.start_sensor()
+    bpms, spo2s = [], []
+    try:
+        time.sleep(CALIBRATION_SECONDS)
+        end = time.time() + (SAMPLE_SECONDS - CALIBRATION_SECONDS)
+        while time.time() < end:
+            time.sleep(POLL_INTERVAL)
+            bpm = round(hrm.bpm, 0)
+            spo2 = round(getattr(hrm, "spo2", 0), 0)
+            print("bpm:", bpm, "spo2:", spo2, flush=True)  # DEBUG: remove once working
+            # Only keep polls where BOTH values are physiologically plausible
+            if BPM_MIN <= bpm <= BPM_MAX and SPO2_MIN <= spo2 <= SPO2_MAX:
+                bpms.append(bpm)
+                spo2s.append(spo2)
+    finally:
+        hrm.stop_sensor()
+
+    if len(bpms) < MIN_VALID_SAMPLES:
+        raise ValueError(PLACEMENT_MSG)
+
+    if max(bpms) - min(bpms) > MAX_BPM_SPREAD:
+        raise ValueError("Unstable reading - keep your finger still and retry")
+
+    # Median ignores the occasional outlier poll
+    bpm = int(statistics.median(bpms))
+    spo2 = int(min(statistics.median(spo2s) + SPO2_OFFSET, SPO2_MAX))
+    return {"bpm": bpm, "spo2": spo2}
+
+
+@app.route("/api/heart-rate-spo2", methods=["GET"])
+def get_heart_rate_spo2():
+    try:
+        return jsonify(read_heart_rate_and_spo2()), 200
+    except Exception as exc:
+        print("ERROR:", exc, flush=True)
+        return jsonify({"error": str(exc)}), 500
+
+
+# --- Weight (HX711 + load cells) --------------------------------------------
+#
+# The scale itself (tare, calibration, stable-reading logic) lives in
+# weight_sensor.py. It is created lazily on the first request, so a wiring or
+# import problem only breaks /api/weight and never the temperature or
+# heart-rate endpoints.
+
+_weight_sensor = None
+
+
+def get_weight_sensor():
+    global _weight_sensor
+    if _weight_sensor is None:
+        from weight_sensor import WeightSensor
+
+        _weight_sensor = WeightSensor()
+    return _weight_sensor
+
+
+@app.route("/api/weight", methods=["GET"])
+def get_weight():
+    try:
+        return jsonify({"weightKg": get_weight_sensor().measure_stable()}), 200
+    except Exception as exc:
+        print("ERROR:", exc, flush=True)
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/calibration/weight/tare", methods=["POST"])
+@require_token
+def post_tare_weight():
+    """Re-zero the scale. The platform MUST be empty."""
+    try:
+        offset = get_weight_sensor().tare()
+        return jsonify({"offset": offset}), 200
+    except Exception as exc:
+        print("ERROR:", exc, flush=True)
+        return jsonify({"error": str(exc)}), 500
+
+
+# --- Calibration overview ---------------------------------------------------
+
+@app.route("/api/calibration", methods=["GET"])
+def get_calibration():
+    return jsonify(calibration), 200
+
+
+if __name__ == "__main__":
+    # threaded=False keeps one sensor read at a time on the shared I2C bus.
+    app.run(host="0.0.0.0", port=5000, threaded=False)

@@ -1,4 +1,5 @@
-import { supabase } from "@generick/shared";
+import { supabase, lookupPatientLocal } from "@generick/shared";
+import type { LocalPatient } from "@generick/shared";
 import type { Patient } from "@generick/shared";
 import type { PatientRow, ProfileRow } from "@generick/shared";
 
@@ -18,6 +19,15 @@ function toPatient(record: PatientWithProfile): Patient {
 export async function findPatientByBarcode(barcode: string): Promise<Patient | null> {
 	const trimmed = barcode.trim();
 	if (!trimmed) return null;
+
+        // Offline-first: look in the kiosk's local patient cache (refreshed by the nightly sync).
+        // Not cached, or the local service is unreachable -> fall through to Supabase below.
+        try {
+                const cached = await lookupPatientLocal(trimmed);
+                if (cached) return patientFromLocal(cached);
+        } catch (err) {
+                console.warn("Local patient lookup failed; trying Supabase.", err);
+        }
 
 	const { data, error } = await supabase
 		.from("patients")
@@ -105,4 +115,19 @@ export async function registerPatient(input: StaffPatientRegistration): Promise<
 		.single();
 	if (error) throw error;
 	return { ...data, first_name: profile.first_name, middle_name: null, last_name: profile.last_name, email: profile.email };
+}
+
+/** Builds a display-only Patient from a cached row. Fields the cache does not hold are left empty. */
+function patientFromLocal(c: LocalPatient): Patient {
+        return {
+                patient_id: c.patient_id,
+                identification_number: c.identification_number,
+                patient_type: c.patient_type,
+                sex: c.sex,
+                birthdate: c.birthdate,
+                first_name: c.first_name ?? "",
+                middle_name: null,
+                last_name: c.last_name ?? "",
+                email: "",
+        } as unknown as Patient;
 }

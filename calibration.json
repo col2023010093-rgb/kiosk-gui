@@ -1,0 +1,23 @@
+{
+  "temperature": {
+    "offsetC": 0.86,
+    "samples": [
+      {
+        "raw": 35.7,
+        "reference": 36.6,
+        "at": "2026-10-12T09:36:32+00:00"
+      },
+      {
+        "raw": 35.77,
+        "reference": 36.6,
+        "at": "2026-10-12T09:36:42+00:00"
+      }
+    ]
+  },
+  "height": {
+    "mountHeightCm": 202.6,
+    "offsetCm": 0.0,
+    "floorCalibratedAt": "2026-10-12T10:00:03+00:00",
+    "samples": []
+  }
+}

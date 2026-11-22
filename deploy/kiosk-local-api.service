@@ -1,0 +1,17 @@
+[Unit]
+Description=Kiosk local database API
+After=network.target
+
+[Service]
+Type=simple
+User=kiosk
+WorkingDirectory=/opt/kiosk/local-db
+EnvironmentFile=/etc/kiosk/kiosk.env
+ExecStart=/opt/kiosk/venv/bin/python local_api.py
+Restart=always
+RestartSec=3
+StateDirectory=kiosk
+StateDirectoryMode=0700
+
+[Install]
+WantedBy=multi-user.target

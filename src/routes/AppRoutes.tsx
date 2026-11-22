@@ -10,14 +10,12 @@ import type { UserRole } from "@generick/shared";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
+import ResetPassword from "../pages/auth/ResetPassword";
 
 import IdleScreen from "../pages/kiosk/IdleScreen";
-import ScanBarcode from "../pages/kiosk/ScanBarcode";
-import PatientConfirm from "../pages/kiosk/PatientConfirm";
 import MeasureVitals from "../pages/kiosk/MeasureVitals";
 import Results from "../pages/kiosk/Results";
 import CompleteScreen from "../pages/kiosk/CompleteScreen";
-import NotRegistered from "../pages/kiosk/NotRegistered";
 
 import UserDashboard from "../pages/dashboard/UserDashboard";
 import StaffDashboard from "../pages/dashboard/StaffDashboard";
@@ -69,22 +67,6 @@ export default function AppRoutes() {
 					<Route index element={<IdleScreen />} />
 					{/* Everything past the idle screen requires a real login (any role). */}
 					<Route
-						path="scan"
-						element={
-							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
-								<ScanBarcode />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path="confirm"
-						element={
-							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
-								<PatientConfirm />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
 						path="measure"
 						element={
 							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
@@ -108,14 +90,6 @@ export default function AppRoutes() {
 							</ProtectedRoute>
 						}
 					/>
-					<Route
-						path="not-registered"
-						element={
-							<ProtectedRoute allowedRoles={KIOSK_ALLOWED_ROLES}>
-								<NotRegistered />
-							</ProtectedRoute>
-						}
-					/>
 				</Route>
 
 				{/* IdleScreen also acts as the site root and legacy /kiosk/idle path. */}
@@ -133,6 +107,7 @@ export default function AppRoutes() {
 				<Route path="/login" element={<Login />} />
 				<Route path="/register" element={<Register />} />
 				<Route path="/forgot-password" element={<ForgotPassword />} />
+				<Route path="/reset-password" element={<ResetPassword />} />
 
 {/* Patient / user role */}
 				<Route

@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
+	Activity,
 	ArrowDown,
 	ArrowLeft,
 	Clock,
-	Eye,
-	EyeOff,
-	HeartPulse,
 	Home,
 	Info,
 	Lock,
@@ -23,7 +21,7 @@ import { playScanSuccessTone, playScanErrorTone } from "@generick/shared";
 import { ROLE_HOME_ROUTE } from "@generick/shared";
 import VirtualKeyboard from "../../components/kiosk/VirtualKeyboard";
 import AccessibilityToolbar from "../../components/kiosk/AccessibilityToolbar";
-import { maskEmail, FONT_SCALES, type FontScaleIndex } from "../../lib/kioskAccessibility";
+import { FONT_SCALES, type FontScaleIndex } from "../../lib/kioskAccessibility";
 
 type Step = "home" | "email";
 type ActiveField = "email" | "password" | null;
@@ -33,10 +31,18 @@ type LanguageCode = "en" | "es" | "tl";
 const IDLE_SCREEN_ROUTE = "/idle";
 const TOAST_AUTO_DISMISS_MS = 5000;
 
+// Same field format as the Register screen: 56px tall, text-lg, text-lg labels,
+// 24px icons, default border-line with the accent focus ring.
+const FIELD_FORMAT =
+	"[&_input:not([type=checkbox])]:h-14 [&_input:not([type=checkbox])]:text-lg [&_label]:text-lg! [&_input:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_white_inset]";
+// Shown on the field the on-screen keyboard is currently typing into
+// (same look Register uses for an open dropdown).
+const FIELD_ACTIVE = "border-accent! ring-2 ring-accent/15";
+const ICON_CLASS = "h-6 w-6";
+
 // Mirrors the Dashboard's STRINGS map, scoped to what this screen needs.
 const STRINGS: Record<LanguageCode, Record<string, string>> = {
 	en: {
-		lowerScreen: "Lower Screen",
 		a11yBarLabel: "Accessibility & Assistance",
 		fontSize: "Text size",
 		language: "Language",
@@ -44,9 +50,9 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		audioToggleOff: "Audio: OFF",
 		sessionEndsIn: "Session ends in",
 		seconds: "s",
-		eyebrow: "PATIENT AUTHENTICATION",
+		eyebrow: "USER AUTHENTICATION",
 		welcomeTitle: "Welcome",
-		welcomeSubtitle: "Sign in to view your health records and recommendations.",
+		welcomeSubtitle: "Log in to view your health records and recommendations.",
 		scanTitle: "Scan Patient ID / QR Code",
 		scanReady: "Ready to scan — no need to tap anything",
 		scanChecking: "Checking your barcode…",
@@ -57,10 +63,8 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		forgotPassword: "Forgot password?",
 		registerPrompt: "Don't have an account?",
 		registerLink: "Register",
-		signInCta: "Sign In",
-		signingIn: "Signing in…",
-		showEmail: "Show Email",
-		hideEmail: "Hide Email",
+		signInCta: "Log In",
+		signingIn: "Logging in…",
 		needAssistance: "Need Assistance?",
 		needAssistanceSub: "Tap here — a staff member will come to help.",
 		staffNotified: "A staff member has been notified and will be with you shortly.",
@@ -69,13 +73,11 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		genericError: "Something went wrong. Please try again.",
 		sayAudioOn: "Audio guidance is on.",
 		sayAudioOff: "Audio guidance is off.",
-		sayEmailStep: "Sign in with email. Use the on-screen keyboard to type your email.",
+		sayEmailStep: "Log in with email. Use the on-screen keyboard to type your email.",
 		sayEmailField: "Email field. Type your email address.",
 		sayPasswordField: "Password field. Type your password. Characters are hidden.",
 		sayBack: "Going back.",
 		sayIdle: "Going to the idle screen.",
-		sayLowerOn: "Screen content lowered.",
-		sayLowerOff: "Screen content centered.",
 		sayTextSize: "Text size",
 		sayCharacter: "character",
 		sayDeleted: "deleted",
@@ -85,7 +87,6 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		missingCredentials: "Enter both email and password.",
 	},
 	es: {
-		lowerScreen: "Bajar pantalla",
 		a11yBarLabel: "Accesibilidad y asistencia",
 		fontSize: "Tamaño del texto",
 		language: "Idioma",
@@ -93,7 +94,7 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		audioToggleOff: "Audio: NO",
 		sessionEndsIn: "La sesión termina en",
 		seconds: "s",
-		eyebrow: "AUTENTICACIÓN DEL PACIENTE",
+		eyebrow: "AUTENTICACIÓN DE USUARIO",
 		welcomeTitle: "Bienvenido",
 		welcomeSubtitle: "Inicie sesión para ver sus registros médicos y recomendaciones.",
 		scanTitle: "Escanee su identificación o código QR",
@@ -108,8 +109,6 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		registerLink: "Regístrese",
 		signInCta: "Iniciar sesión",
 		signingIn: "Iniciando sesión…",
-		showEmail: "Mostrar correo",
-		hideEmail: "Ocultar correo",
 		needAssistance: "¿Necesita ayuda?",
 		needAssistanceSub: "Toque aquí — un miembro del personal vendrá a ayudar.",
 		staffNotified: "Se ha notificado al personal; alguien le atenderá en breve.",
@@ -123,8 +122,6 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		sayPasswordField: "Campo de contraseña. Escriba su contraseña. Los caracteres están ocultos.",
 		sayBack: "Volviendo.",
 		sayIdle: "Yendo a la pantalla de inicio.",
-		sayLowerOn: "Contenido bajado.",
-		sayLowerOff: "Contenido centrado.",
 		sayTextSize: "Tamaño del texto",
 		sayCharacter: "carácter",
 		sayDeleted: "borrado",
@@ -134,7 +131,6 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		missingCredentials: "Ingrese su correo y contraseña.",
 	},
 	tl: {
-		lowerScreen: "Ibaba ang Screen",
 		a11yBarLabel: "Accessibility at Tulong",
 		fontSize: "Laki ng teksto",
 		language: "Wika",
@@ -142,9 +138,9 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		audioToggleOff: "Audio: OFF",
 		sessionEndsIn: "Matatapos ang session sa",
 		seconds: "s",
-		eyebrow: "PAGPAPATUNAY NG PASYENTE",
+		eyebrow: "PAGPAPATUNAY NG USER",
 		welcomeTitle: "Maligayang pagbabalik",
-		welcomeSubtitle: "Mag-sign in para tingnan ang iyong medical records at rekomendasyon.",
+		welcomeSubtitle: "Mag-log in para tingnan ang iyong medical records at rekomendasyon.",
 		scanTitle: "I-scan ang Patient ID / QR Code",
 		scanReady: "Handa nang i-scan — hindi na kailangang pindutin",
 		scanChecking: "Sinusuri ang iyong barcode…",
@@ -155,10 +151,8 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		forgotPassword: "Nakalimutan ang password?",
 		registerPrompt: "Wala ka pang account?",
 		registerLink: "Mag-rehistro",
-		signInCta: "Mag-sign In",
-		signingIn: "Nagsa-sign in…",
-		showEmail: "Ipakita ang Email",
-		hideEmail: "Itago ang Email",
+		signInCta: "Mag-log In",
+		signingIn: "Nagla-log in…",
 		needAssistance: "Kailangan ng Tulong?",
 		needAssistanceSub: "Pindutin dito — lalapitan kayo ng staff.",
 		staffNotified: "Naabisuhan na ang staff at lalapit sila sa iyo.",
@@ -167,13 +161,11 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		genericError: "May nangyaring mali. Pakisubukang muli.",
 		sayAudioOn: "Naka-on ang audio guidance.",
 		sayAudioOff: "Naka-off ang audio guidance.",
-		sayEmailStep: "Mag-sign in gamit ang email. Gamitin ang keyboard sa screen para i-type ang email.",
+		sayEmailStep: "Mag-log in gamit ang email. Gamitin ang keyboard sa screen para i-type ang email.",
 		sayEmailField: "Email field. I-type ang iyong email address.",
 		sayPasswordField: "Password field. I-type ang iyong password. Nakatago ang mga character.",
 		sayBack: "Bumabalik.",
 		sayIdle: "Pupunta sa idle screen.",
-		sayLowerOn: "Ibinaba ang nilalaman.",
-		sayLowerOff: "Nasa gitna ang nilalaman.",
 		sayTextSize: "Laki ng teksto",
 		sayCharacter: "character",
 		sayDeleted: "binura",
@@ -193,12 +185,11 @@ export default function Login() {
 	const auth = useAuth() as KioskAuth;
 	const { login, loginWithBarcode } = auth;
 
-	// --- Accessibility controls, matching the Dashboard's toolbar exactly ----
-	const [lowerScreen, setLowerScreen] = useState(false);
+	// --- Accessibility controls, matching the Dashboard's toolbar ------------
 	// Start at 100%: find the step whose scale is exactly 1 instead of hardcoding an index.
-const [fontStep, setFontStep] = useState<FontScaleIndex>(
-	() => Math.max(0, FONT_SCALES.findIndex((s) => s === 1)) as FontScaleIndex
-);
+	const [fontStep, setFontStep] = useState<FontScaleIndex>(
+		() => Math.max(0, FONT_SCALES.findIndex((s) => s === 1)) as FontScaleIndex
+	);
 	const [audioEnabled, setAudioEnabled] = useState(false);
 	const [language, setLanguage] = useState<LanguageCode>("en");
 	const fontScale = FONT_SCALES[fontStep];
@@ -223,7 +214,6 @@ const [fontStep, setFontStep] = useState<FontScaleIndex>(
 	const [step, setStep] = useState<Step>("home");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
-	const [emailRevealed, setEmailRevealed] = useState(false);
 	const [activeField, setActiveField] = useState<ActiveField>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -351,11 +341,6 @@ const [fontStep, setFontStep] = useState<FontScaleIndex>(
 	}
 
 	// --- Audio guidance for toolbar + typing ---------------------------------
-	function handleToggleLowerScreen() {
-		const next = !lowerScreen;
-		setLowerScreen(next);
-		speak(t(next ? "sayLowerOn" : "sayLowerOff"));
-	}
 	function handleFontStepChange(step: FontScaleIndex) {
 		setFontStep(step);
 		speak(`${t("sayTextSize")} ${Math.round(FONT_SCALES[step] * 100)} %`);
@@ -409,7 +394,6 @@ const [fontStep, setFontStep] = useState<FontScaleIndex>(
 			<AccessibilityToolbar
 				strings={{
 					a11yBarLabel: t("a11yBarLabel"),
-					lowerScreen: t("lowerScreen"),
 					fontSize: t("fontSize"),
 					language: t("language"),
 					audioToggleOn: t("audioToggleOn"),
@@ -417,8 +401,6 @@ const [fontStep, setFontStep] = useState<FontScaleIndex>(
 				}}
 				language={language}
 				onLanguageChange={(l) => handleLanguageChange(l as LanguageCode)}
-				lowerScreen={lowerScreen}
-				onToggleLowerScreen={handleToggleLowerScreen}
 				fontStep={fontStep}
 				onFontStepChange={handleFontStepChange}
 				audioGuidance={audioEnabled}
@@ -427,13 +409,14 @@ const [fontStep, setFontStep] = useState<FontScaleIndex>(
 
 			{/* ============ Branding header: logo left / session timer right ============ */}
 			<div style={zoomStyle} className="relative flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-6 sm:px-8">
-				<div className="flex items-center gap-5">
-					<div className="animate-pulse-glow flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-deep shadow-[0_0_10px_-2px_rgba(20,184,166,0.55)]">
-						<HeartPulse className="h-9 w-9 text-white" strokeWidth={2.25} />
+				{/* Logo: identical to the Dashboard's */}
+				<div className="flex items-center gap-4">
+					<div className="animate-pulse-glow flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00A896] shadow-[0_0_10px_-2px_rgba(0,168,150,0.55)]">
+						<Activity className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden="true" />
 					</div>
 					<div className="leading-tight">
-						<div className="text-3xl font-extrabold text-[#0F172A]">GenErick</div>
-						<div className="mt-1 text-base font-semibold uppercase tracking-[2px] text-[#334155] sm:text-lg">
+						<div className="text-xl font-extrabold text-[#17212B]">GenErick</div>
+						<div className="text-xs font-semibold uppercase tracking-[2px] text-[#52616B]">
 							Patient Health Monitoring Kiosk
 						</div>
 					</div>
@@ -457,12 +440,10 @@ const [fontStep, setFontStep] = useState<FontScaleIndex>(
 			{step === "home" && (
 				<main
 					style={zoomStyle}
-					className={`relative flex min-h-0 flex-1 flex-col items-center gap-6 overflow-y-auto px-6 py-8 sm:px-10 ${
-						lowerScreen ? "justify-end" : "justify-center"
-					}`}
+					className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-6 py-8 sm:px-10"
 				>
 					<div
-						className="flex w-full max-w-[960px] min-h-[68vh] flex-col justify-center rounded-3xl border border-[#E2E8F0] bg-white p-12 sm:p-14"
+						className="flex w-full max-w-[960px] min-h-[58vh] flex-col justify-center rounded-3xl border border-[#E2E8F0] bg-white p-12 sm:p-14"
 						style={{ boxShadow: "0px 10px 25px rgba(0,0,0,0.08)" }}
 					>
 						<p className="text-[22px] font-extrabold tracking-wide text-[#0D9488]">{t("eyebrow")}</p>
@@ -550,81 +531,34 @@ const [fontStep, setFontStep] = useState<FontScaleIndex>(
 								</p>
 							)}
 
-							<form onSubmit={handleEmailSubmit} className="mt-8 flex flex-col gap-6 [&_label]:text-[24px]! [&_label]:font-bold! [&_label]:leading-snug">
-								{activeField !== "email" && email && !emailRevealed ? (
-									<div className="flex items-end gap-3">
-										<div className="flex-1">
-											<span className="text-[24px] font-bold text-[#0F172A]">{t("emailLabel")}</span>
-											<div className="mt-2 flex h-20 items-center rounded-xl border-2 border-[#64748B] bg-white px-5 text-[26px] text-[#0F172A]">
-												{maskEmail(email)}
-											</div>
-										</div>
-										<button
-											type="button"
-											onClick={() => {
-											setEmailRevealed(true);
-											speak(t("showEmail"));
-										}}
-											className="flex h-20 items-center gap-2 rounded-xl border-2 border-[#64748B] px-5 text-[20px] font-semibold text-[#0284C7]"
-										>
-											<Eye className="h-6 w-6" aria-hidden="true" />
-											{t("showEmail")}
-										</button>
-									</div>
-								) : (
-									<div className="flex items-end gap-3">
-										<div className="flex-1">
-											<Input
-												label={t("emailLabel")}
-												type="email"
-												placeholder="you@example.com"
-												icon={<Mail className="h-6 w-6" />}
-												value={email}
-												onChange={(e) => setEmail(e.target.value)}
-												onFocus={() => setActiveField("email")}
-												onBlur={() => setActiveField(null)}
-												autoComplete="username"
-												inputMode="none"
-												className={`h-20 rounded-xl border-2 text-[26px]! placeholder:text-[24px]! transition-colors ${
-													activeField === "email"
-														? "border-[#0284C7] bg-[#F0F9FF] ring-[3px] ring-[#0284C7]"
-														: "border-[#64748B] bg-white"
-												}`}
-											/>
-										</div>
-										{emailRevealed && email && activeField !== "email" && (
-											<button
-												type="button"
-												onClick={() => {
-												setEmailRevealed(false);
-												speak(t("hideEmail"));
-											}}
-												className="flex h-20 items-center gap-2 rounded-xl border-2 border-[#64748B] px-5 text-[20px] font-semibold text-[#0284C7]"
-											>
-												<EyeOff className="h-6 w-6" aria-hidden="true" />
-												{t("hideEmail")}
-											</button>
-										)}
-									</div>
-								)}
+							<form onSubmit={handleEmailSubmit} className={`mt-8 flex flex-col gap-5 ${FIELD_FORMAT}`}>
+								<Input
+									label={t("emailLabel")}
+									type="email"
+									placeholder="you@example.com"
+									icon={<Mail className={ICON_CLASS} />}
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									onFocus={() => setActiveField("email")}
+									onBlur={() => setActiveField(null)}
+									autoComplete="username"
+									inputMode="none"
+									className={activeField === "email" ? FIELD_ACTIVE : ""}
+								/>
 
 								<Input
 									ref={passwordInputRef}
 									label={t("passwordLabel")}
 									type="password"
 									placeholder="••••••••"
-									icon={<Lock className="h-6 w-6" />}
+									icon={<Lock className={ICON_CLASS} />}
 									value={password}
 									onChange={(e) => setPassword(e.target.value)}
 									onFocus={() => setActiveField("password")}
 									onBlur={() => setActiveField(null)}
 									autoComplete="current-password"
 									inputMode="none"
-									className={`h-20 rounded-xl border-2 text-[26px]! placeholder:text-[24px]! transition-colors ${
-										activeField === "password"
-											? "border-[#0284C7] bg-[#F0F9FF] ring-[3px] ring-[#0284C7]"
-											: "border-[#64748B] bg-white"
-									}`}
+									className={activeField === "password" ? FIELD_ACTIVE : ""}
 								/>
 
 								{/* Forgot password: plain underlined link, no border/pill */}

@@ -1,0 +1,19 @@
+[Unit]
+Description=Kiosk sync: send local records to Supabase
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=6h
+StartLimitBurst=4
+
+[Service]
+Type=oneshot
+User=kiosk
+WorkingDirectory=/opt/kiosk/local-db
+EnvironmentFile=/etc/kiosk/kiosk.env
+# Same state folder as the API service, so the sync can run first after a reboot.
+StateDirectory=kiosk
+StateDirectoryMode=0700
+ExecStart=/opt/kiosk/venv/bin/python sync_worker.py
+# If the internet is down at 2 AM, try again every 30 minutes (max 4 retries).
+Restart=on-failure
+RestartSec=1800

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -7,23 +7,13 @@ import {
     ArrowRight,
     CheckCircle2,
     Check,
-    ChevronDown,
     Clock,
-    Eye,
-    EyeOff,
     Fingerprint,
     Gauge,
-    Globe,
-    HeartPulse,
-    Info,
-    MoveVertical,
     QrCode,
     Ruler,
     Scale,
     Thermometer,
-    Type,
-    Volume2,
-    VolumeX,
     Watch,
     X,
     Activity,
@@ -33,6 +23,19 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { getPatientByProfileId, useAuth } from "@generick/shared";
 import { buildPublicBarcodeUrl, getPublicBaseUrl, maskDisplayName } from "../../utils/publicBarcodeLink";
+import AccessibilityToolbar from "../../components/kiosk/AccessibilityToolbar";
+import { FONT_SCALES, type FontScaleIndex } from "../../lib/kioskAccessibility";
+
+/*
+ * Brand tokens (mirrors brand-tokens.css):
+ *   primary  #00A896   buttons, active borders, check marks
+ *   dark     #0B6E64   instruction pills, text on light tint, hover
+ *   light    #E6F7F5   icon tiles, selected-card tint
+ *   canvas   #F5F8FA   page background
+ *   text     #17212B / #52616B
+ *   border   #E2E8F0
+ *   success  bg #E6F4EA / text #197A55
+ */
 
 type TestType = "bmi" | "blood_pressure" | "heart_rate_spo2" | "temperature" | "complete";
 type DeviceStatus = "ready" | "offline";
@@ -43,29 +46,22 @@ type DeviceStatus = "ready" | "offline";
 
 const INACTIVITY_LIMIT_SECONDS = 60;
 const SESSION_WARNING_THRESHOLD = 15;
-const FONT_SCALE_STEPS = [0.85, 1, 1.15, 1.3, 1.45];
-const DEFAULT_FONT_SCALE_INDEX = 1;
 
 type LanguageCode = "en" | "es" | "tl";
 
-const LANGUAGES: { code: LanguageCode; label: string }[] = [
-    { code: "en", label: "English" },
-    { code: "es", label: "Español" },
-    { code: "tl", label: "Tagalog" },
-];
-
 const STRINGS: Record<LanguageCode, Record<string, string>> = {
     en: {
+        a11yBarLabel: "Accessibility & Assistance",
+        fontSize: "Text size",
+        language: "Language",
+        audioToggleOn: "Audio: ON",
+        audioToggleOff: "Audio: OFF",
         title: "Choose a Physiological Assessment",
         subtitle: "Select the assessment you would like to take, then begin the test.",
         beginTest: "Begin Assessment",
         logOut: "Log Out",
         needAssistance: "Need Assistance?",
         needAssistanceSub: "Tap here — a staff member will come to help.",
-        lowerScreen: "Lower Screen",
-        fontSize: "Text Size",
-        audio: "Audio",
-        language: "Language",
         showName: "Show Name",
         hideName: "Hide Name",
         sessionEndsIn: "Session ends in",
@@ -78,18 +74,22 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
         logOutNow: "Log Out Now",
         sensorErrorTitle: "Sensor placement issue",
         dismiss: "Dismiss",
+        sayAudioOn: "Audio guidance is on.",
+        sayAudioOff: "Audio guidance is off.",
+        sayTextSize: "Text size",
     },
     es: {
+        a11yBarLabel: "Accesibilidad y asistencia",
+        fontSize: "Tamaño del texto",
+        language: "Idioma",
+        audioToggleOn: "Audio: SÍ",
+        audioToggleOff: "Audio: NO",
         title: "Elija una evaluación fisiológica",
         subtitle: "Seleccione la evaluación que desea realizar y luego inicie la prueba.",
         beginTest: "Comenzar evaluación",
         logOut: "Cerrar sesión",
         needAssistance: "¿Necesita ayuda?",
         needAssistanceSub: "Toque aquí — un miembro del personal vendrá a ayudar.",
-        lowerScreen: "Bajar pantalla",
-        fontSize: "Tamaño de texto",
-        audio: "Audio",
-        language: "Idioma",
         showName: "Mostrar nombre",
         hideName: "Ocultar nombre",
         sessionEndsIn: "La sesión termina en",
@@ -102,18 +102,22 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
         logOutNow: "Cerrar sesión ahora",
         sensorErrorTitle: "Problema de colocación del sensor",
         dismiss: "Cerrar",
+        sayAudioOn: "La guía de audio está activada.",
+        sayAudioOff: "La guía de audio está desactivada.",
+        sayTextSize: "Tamaño del texto",
     },
     tl: {
+        a11yBarLabel: "Accessibility at Tulong",
+        fontSize: "Laki ng teksto",
+        language: "Wika",
+        audioToggleOn: "Audio: ON",
+        audioToggleOff: "Audio: OFF",
         title: "Pumili ng Pagsusuri sa Katawan",
         subtitle: "Piliin ang pagsusuring gusto ninyong gawin, pagkatapos ay simulan ang pagsusuri.",
         beginTest: "Simulan ang Pagsusuri",
         logOut: "Mag-log Out",
         needAssistance: "Kailangan ng Tulong?",
         needAssistanceSub: "Pindutin dito — lalapitan kayo ng staff.",
-        lowerScreen: "Ibaba ang Screen",
-        fontSize: "Laki ng Titik",
-        audio: "Audio",
-        language: "Wika",
         showName: "Ipakita ang Pangalan",
         hideName: "Itago ang Pangalan",
         sessionEndsIn: "Matatapos ang session sa",
@@ -126,8 +130,14 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
         logOutNow: "Mag-log Out Na",
         sensorErrorTitle: "Isyu sa paglagay ng sensor",
         dismiss: "Isara",
+        sayAudioOn: "Naka-on ang audio guidance.",
+        sayAudioOff: "Naka-off ang audio guidance.",
+        sayTextSize: "Laki ng teksto",
     },
 };
+
+// All category icon tiles share one teal tint (brand-light) per the Idle screen.
+const ICON_TILE = "bg-[#E6F7F5] text-[#0B6E64]";
 
 const GRID_OPTIONS: {
     id: TestType;
@@ -136,8 +146,6 @@ const GRID_OPTIONS: {
     hardwareIcon: typeof Scale;
     hardwareCue: string;
     measures: string[];
-    iconBg: string;
-    iconColor: string;
     status: DeviceStatus;
 }[] = [
     {
@@ -147,8 +155,6 @@ const GRID_OPTIONS: {
         hardwareIcon: Scale,
         hardwareCue: "Stand on the floor scale",
         measures: ["Height", "Weight", "BMI"],
-        iconBg: "bg-[#F0FDF4]",
-        iconColor: "text-[#15803D]",
         status: "ready",
     },
     {
@@ -158,8 +164,6 @@ const GRID_OPTIONS: {
         hardwareIcon: Watch,
         hardwareCue: "Cuff goes on right arm",
         measures: ["Systolic BP", "Diastolic BP"],
-        iconBg: "bg-blue-100",
-        iconColor: "text-blue-[#0284C7]",
         status: "ready",
     },
     {
@@ -169,8 +173,6 @@ const GRID_OPTIONS: {
         hardwareIcon: Thermometer,
         hardwareCue: "Scanner rests near forehead",
         measures: ["Body Temperature (°C)"],
-        iconBg: "bg-violet-100",
-        iconColor: "text-violet-600",
         status: "ready",
     },
     {
@@ -180,8 +182,6 @@ const GRID_OPTIONS: {
         hardwareIcon: Fingerprint,
         hardwareCue: "Clip goes on one finger",
         measures: ["Heart Rate (BPM)", "SpO₂"],
-        iconBg: "bg-pink-100",
-        iconColor: "text-pink-600",
         status: "ready",
     },
 ];
@@ -203,13 +203,19 @@ type QrStatus = "idle" | "loading" | "ready" | "error";
 
 type SensorErrorState = { testType: TestType; message?: string } | null;
 
+// Shared class fragments so every interactive surface uses the same teal states.
+const CARD_SELECTED = "border-[3px] border-[#00A896] bg-[#E6F7F5] shadow-[0_0_22px_-8px_rgba(0,168,150,0.45)]";
+const CARD_IDLE =
+    "border border-[#E2E8F0] bg-white hover:border-[#00A896]/40 hover:shadow-[0_4px_14px_-8px_rgba(0,168,150,0.2)]";
+const FOCUS_RING = "focus:outline-none focus-visible:ring-4 focus-visible:ring-[#00A896]/40";
+
 function maskedIdentity(fullName: string | undefined): string {
     if (!fullName) return "Session ID: #4821";
     const parts = fullName.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 1) return `Patient: ${parts[0][0].toUpperCase()}.`;
+    if (parts.length === 1) return `${parts[0][0].toUpperCase()}.`;
     const first = parts[0][0]?.toUpperCase() ?? "";
     const last = parts[parts.length - 1];
-    return `Patient: ${first}. ${last}`;
+    return `${first}. ${last}`;
 }
 
 export default function UserDashboard() {
@@ -225,28 +231,44 @@ export default function UserDashboard() {
     // Dynamic destination: points at the /public-barcode route on the current origin.
     const QR_DESTINATION_URL = qrUrl;
 
-    // --- Accessibility controls -------------------------------------------------
-    const [lowerScreen, setLowerScreen] = useState(false);
-    const [fontStepIndex, setFontStepIndex] = useState(DEFAULT_FONT_SCALE_INDEX);
+    // --- Accessibility controls (same shared toolbar as Login / Register) --------
+    // Start at 100%: find the step whose scale is exactly 1 instead of hardcoding an index.
+    const [fontStep, setFontStep] = useState<FontScaleIndex>(
+        () => Math.max(0, FONT_SCALES.findIndex((s) => s === 1)) as FontScaleIndex
+    );
     const [audioEnabled, setAudioEnabled] = useState(false);
     const [language, setLanguage] = useState<LanguageCode>("en");
-    const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
-    const [showFullName, setShowFullName] = useState(false);
-    const fontScale = FONT_SCALE_STEPS[fontStepIndex];
+    const reduceMotion = useReducedMotion();
+    const fontScale = FONT_SCALES[fontStep];
+    const zoomStyle: CSSProperties = { zoom: fontScale };
     const t = (key: string) => STRINGS[language][key] ?? STRINGS.en[key] ?? key;
-    const scaled = (px: number) => ({ fontSize: `${Math.round(px * fontScale)}px` });
 
-    function speak(text: string) {
-        if (!audioEnabled) return;
+    function speak(text: string, force = false, lang: LanguageCode = language) {
+        if (!audioEnabled && !force) return;
         try {
             if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang === "es" ? "es-ES" : lang === "tl" ? "fil-PH" : "en-US";
             utterance.rate = 0.95;
             window.speechSynthesis.speak(utterance);
         } catch {
             // Speech synthesis unavailable — fail silently, never block the UI.
         }
+    }
+
+    function handleFontStepChange(step: FontScaleIndex) {
+        setFontStep(step);
+        speak(`${t("sayTextSize")} ${Math.round(FONT_SCALES[step] * 100)} %`);
+    }
+    function handleToggleAudio() {
+        const next = !audioEnabled;
+        setAudioEnabled(next);
+        speak(t(next ? "sayAudioOn" : "sayAudioOff"), true);
+    }
+    function handleLanguageChange(code: LanguageCode) {
+        setLanguage(code);
+        speak(STRINGS[code].title, false, code);
     }
 
     // --- Live hardware status ----------------------------------------------------
@@ -359,123 +381,45 @@ export default function UserDashboard() {
     }
 
     const identityLabel = useMemo(() => maskedIdentity(user?.fullName), [user?.fullName]);
+    const beginDisabled = !selectedTest || (selectedTest !== "complete" && deviceStatus[selectedTest] === "offline");
 
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="relative flex h-dvh w-full flex-col overflow-hidden bg-[#F8FAFC] font-body [font-kerning:normal]"
+            className="relative flex h-dvh w-full flex-col overflow-hidden bg-[#F5F8FA] font-body [font-kerning:normal]"
         >
-            {/* ============ Sticky Accessibility & Assistance toolbar ============ */}
-            <div className="relative z-40 flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-slate-100 p-3 sm:px-6">
-                <span className="text-xs font-bold uppercase tracking-wide text-[#334155]">
-                    Accessibility &amp; Assistance
-                </span>
-                <div className="flex flex-wrap items-center gap-4">
-                    <button
-                        type="button"
-                        onClick={() => setLowerScreen((v) => !v)}
-                        aria-pressed={lowerScreen}
-                        className={`flex h-12 min-w-[48px] items-center gap-2 rounded-full border px-4 text-sm font-semibold transition ${
-                            lowerScreen
-                                ? "border-[#0284C7] bg-[#F0F9FF] text-[#0284C7]"
-                                : "border-slate-300 bg-white text-[#1E293B] hover:border-[#0284C7]/50"
-                        }`}
-                    >
-                        <MoveVertical className="h-5 w-5" aria-hidden="true" />
-                        {t("lowerScreen")}
-                    </button>
-
-                    <div className="flex h-[52px] items-stretch divide-x divide-slate-300 overflow-hidden rounded-full border border-slate-300 bg-white text-[#1E293B]">
-                        <button
-                            type="button"
-                            onClick={() => setFontStepIndex((i) => Math.max(0, i - 1))}
-                            disabled={fontStepIndex === 0}
-                            aria-label="Decrease text size"
-                            className="flex w-[52px] items-center justify-center text-xl font-bold transition hover:bg-[#F0F9FF] disabled:opacity-30"
-                        >
-                            −
-                        </button>
-                        <span className="flex min-w-[64px] items-center justify-center gap-1.5 px-2 text-sm font-bold text-[#334155]">
-                            <Type className="h-4 w-4" aria-hidden="true" />
-                            {Math.round(fontScale * 100)}%
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => setFontStepIndex((i) => Math.min(FONT_SCALE_STEPS.length - 1, i + 1))}
-                            disabled={fontStepIndex === FONT_SCALE_STEPS.length - 1}
-                            aria-label="Increase text size"
-                            className="flex w-[52px] items-center justify-center text-xl font-bold transition hover:bg-[#F0F9FF] disabled:opacity-30"
-                        >
-                            +
-                        </button>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={() => setAudioEnabled((v) => !v)}
-                        aria-pressed={audioEnabled}
-                        className={`flex h-12 min-w-[48px] items-center gap-2 rounded-full border px-4 text-sm font-semibold transition ${
-                            audioEnabled
-                                ? "border-[#0284C7] bg-[#F0F9FF] text-[#0284C7]"
-                                : "border-slate-300 bg-white text-[#1E293B] hover:border-[#0284C7]/50"
-                        }`}
-                    >
-                        {audioEnabled ? <Volume2 className="h-5 w-5" aria-hidden="true" /> : <VolumeX className="h-5 w-5" aria-hidden="true" />}
-                        {t("audio")}
-                    </button>
-
-                    <div className="relative">
-                        <button
-                            type="button"
-                            onClick={() => setLanguageMenuOpen((v) => !v)}
-                            aria-haspopup="listbox"
-                            aria-expanded={languageMenuOpen}
-                            className="flex h-12 min-w-[48px] items-center gap-2 rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-[#1E293B] transition hover:border-[#0284C7]/50"
-                        >
-                            <Globe className="h-5 w-5 text-[#334155]" aria-hidden="true" />
-                            {LANGUAGES.find((l) => l.code === language)?.label}
-                            <ChevronDown className="h-4 w-4 text-[#334155]" aria-hidden="true" />
-                        </button>
-                        {languageMenuOpen && (
-                            <ul
-                                role="listbox"
-                                className="absolute right-0 top-[calc(100%+6px)] z-50 w-40 overflow-hidden rounded-xl border border-slate-300 bg-white py-1 shadow-lg"
-                            >
-                                {LANGUAGES.map((l) => (
-                                    <li key={l.code}>
-                                        <button
-                                            type="button"
-                                            role="option"
-                                            aria-selected={language === l.code}
-                                            onClick={() => {
-                                                setLanguage(l.code);
-                                                setLanguageMenuOpen(false);
-                                            }}
-                                            className={`flex w-full items-center px-4 py-3 text-left text-sm font-medium ${
-                                                language === l.code ? "bg-[#F0F9FF] text-[#0284C7]" : "text-[#1E293B] hover:bg-[#F8FAFC]"
-                                            }`}
-                                        >
-                                            {l.label}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                </div>
-            </div>
+            {/* ============ Sticky Accessibility & Assistance toolbar (shared) ============ */}
+            <AccessibilityToolbar
+                strings={{
+                    a11yBarLabel: t("a11yBarLabel"),
+                    fontSize: t("fontSize"),
+                    language: t("language"),
+                    audioToggleOn: t("audioToggleOn"),
+                    audioToggleOff: t("audioToggleOff"),
+                }}
+                language={language}
+                onLanguageChange={(l) => handleLanguageChange(l as LanguageCode)}
+                fontStep={fontStep}
+                onFontStepChange={handleFontStepChange}
+                audioGuidance={audioEnabled}
+                onToggleAudioGuidance={handleToggleAudio}
+            />
 
             {/* ============ Profile header ============ */}
-            <div className="relative grid shrink-0 grid-cols-1 items-center gap-3 border-b border-slate-200 bg-white px-6 py-4 sm:grid-cols-3 sm:px-8">
+            <div
+                style={zoomStyle}
+                className="relative grid shrink-0 grid-cols-1 items-center gap-3 border-b border-[#E2E8F0] bg-white px-6 py-4 sm:grid-cols-3 sm:px-8"
+            >
                 <div className="flex items-center gap-4">
-                    <div className="animate-pulse-glow flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0284C7] to-[#0369A1] shadow-[0_0_10px_-2px_rgba(2,132,199,0.55)]">
-                        <HeartPulse className="h-6 w-6 text-white" strokeWidth={2.25} />
+                    {/* Teal rounded-square logo with white pulse waveform (matches Idle screen) */}
+                    <div className="animate-pulse-glow flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00A896] shadow-[0_0_10px_-2px_rgba(0,168,150,0.55)]">
+                        <Activity className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden="true" />
                     </div>
                     <div className="leading-tight">
-                        <div className="text-xl font-extrabold text-[#0F172A]">GenErick</div>
-                        <div className="text-xs font-semibold uppercase tracking-[2px] text-[#334155]">
+                        <div className="text-xl font-extrabold text-[#17212B]">GenErick</div>
+                        <div className="text-xs font-semibold uppercase tracking-[2px] text-[#52616B]">
                             Patient Health Monitoring Kiosk
                         </div>
                     </div>
@@ -484,7 +428,7 @@ export default function UserDashboard() {
                 <div className="flex justify-center">
                     <div
                         className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-bold ${
-                            isUrgent ? "border-[#D97706] bg-[#FFFBEB] text-[#D97706]" : "border-slate-300 bg-[#F8FAFC] text-[#334155]"
+                            isUrgent ? "border-[#D97706] bg-[#FFFBEB] text-[#D97706]" : "border-slate-300 bg-[#F5F8FA] text-[#52616B]"
                         }`}
                         role="timer"
                         aria-live="polite"
@@ -496,41 +440,29 @@ export default function UserDashboard() {
                 </div>
 
                 <div className="flex items-center justify-start gap-3 sm:justify-end">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0284C7] to-[#0369A1] text-xs font-bold text-white">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00A896] text-xs font-bold text-white">
                         {user?.avatarInitials ?? "PT"}
                     </div>
-                    <span className="hidden text-sm font-bold text-[#0F172A] md:inline">
-                        {showFullName && user?.fullName ? user.fullName : identityLabel}
-                    </span>
-                    <button
-                        type="button"
-                        onClick={() => setShowFullName((v) => !v)}
-                        style={{ minHeight: 44 }}
-                        className="flex items-center gap-2 rounded-full border border-[#CBD5E1] bg-white px-4 text-sm font-bold text-[#0F172A] transition hover:border-[#0284C7]/50"
-                    >
-                        {showFullName ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
-                        {showFullName ? t("hideName") : t("showName")}
-                    </button>
+                    <span className="hidden text-sm font-bold text-[#17212B] md:inline">{identityLabel}</span>
                 </div>
             </div>
 
             {/* ============ Main content ============ */}
             <div
-                className={`relative flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 py-6 transition-[justify-content] sm:px-8 ${
-                    lowerScreen ? "justify-end" : "justify-start"
-                }`}
+                style={zoomStyle}
+                className="relative flex min-h-0 flex-1 flex-col justify-start gap-5 overflow-y-auto px-6 py-6 sm:px-8"
             >
                 <header className="shrink-0">
-                    <h1 style={scaled(34)} className="font-extrabold leading-tight tracking-tight text-[#0F172A] text-balance">
+                    <h1 className="text-[34px] font-extrabold leading-tight tracking-tight text-[#17212B] text-balance">
                         {t("title")}
                     </h1>
-                    <p style={scaled(18)} className="mt-2 leading-snug text-pretty text-[#334155]">
+                    <p className="mt-2 text-[18px] leading-snug text-pretty text-[#52616B]">
                         {t("subtitle")}
                     </p>
                 </header>
 
                 {/* 2x2 grid of individual assessments */}
-                <div className="grid shrink-0 grid-cols-1 gap-6 sm:grid-cols-2">
+                <div className="grid shrink-0 auto-rows-fr grid-cols-1 items-stretch gap-6 sm:grid-cols-2">
                     {GRID_OPTIONS.map((option) => {
                         const Icon = option.icon;
                         const HardwareIcon = option.hardwareIcon;
@@ -548,22 +480,22 @@ export default function UserDashboard() {
                                     aria-disabled={isOffline}
                                     disabled={isOffline}
                                     style={{ minHeight: 140 }}
-                                    className={`flex min-w-[320px] flex-col gap-3 rounded-2xl border p-4 text-left transition ${
+                                    className={`flex min-w-[320px] flex-1 flex-col gap-3 rounded-2xl border p-4 text-left transition ${FOCUS_RING} ${
                                         isOffline
                                             ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-70"
                                             : isSelected
-                                                ? "border-[3px] border-[#0284C7] bg-[#F0F9FF] shadow-[0_0_22px_-8px_rgba(2,132,199,0.45)]"
-                                                : "border border-[#E2E8F0] bg-white hover:border-[#0284C7]/40 hover:shadow-[0_4px_14px_-8px_rgba(2,132,199,0.2)]"
+                                                ? CARD_SELECTED
+                                                : CARD_IDLE
                                     }`}
                                 >
                                     <div className="flex items-center justify-between gap-2">
-                                        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${option.iconBg} ${option.iconColor}`}>
+                                        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${ICON_TILE}`}>
                                             <Icon className="h-7 w-7" aria-hidden="true" />
                                         </span>
                                         <div className="flex items-center gap-2">
                                             <span
                                                 className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${
-                                                    isOffline ? "bg-[#FEE2E2] text-[#B91C1C]" : "bg-[#DCFCE7] text-[#15803D]"
+                                                    isOffline ? "bg-[#FEE2E2] text-[#B91C1C]" : "bg-[#E6F4EA] text-[#197A55]"
                                                 }`}
                                             >
                                                 {isOffline ? (
@@ -576,7 +508,7 @@ export default function UserDashboard() {
                                             <span
                                                 aria-hidden="true"
                                                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                                                    isSelected ? "border-[#0284C7] bg-[#0284C7] text-white" : "border-[#CBD5E1] bg-white text-transparent"
+                                                    isSelected ? "border-[#00A896] bg-[#00A896] text-white" : "border-[#CBD5E1] bg-white text-transparent"
                                                 }`}
                                             >
                                                 <Check className="h-5 w-5" strokeWidth={3} />
@@ -585,13 +517,10 @@ export default function UserDashboard() {
                                     </div>
 
                                     <div>
-                                        <p style={scaled(20)} className="font-bold leading-snug text-[#0F172A] text-balance">
+                                        <p className="text-[20px] font-bold leading-snug text-[#17212B] text-balance">
                                             {option.label}
                                         </p>
-                                        <span
-                                            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#1E40AF] px-3 py-1.5 font-bold text-white"
-                                            style={scaled(14)}
-                                        >
+                                        <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#0B6E64] px-3 py-1.5 text-[14px] font-bold text-white">
                                             <HardwareIcon className="h-4 w-4" aria-hidden="true" />
                                             {option.hardwareCue}
                                         </span>
@@ -599,8 +528,8 @@ export default function UserDashboard() {
 
                                     <ul className="flex flex-col gap-y-1.5">
                                         {option.measures.map((measure) => (
-                                            <li key={measure} style={scaled(18)} className="flex items-center gap-2 leading-snug text-[#334155]">
-                                                <Check className="h-5 w-5 shrink-0 text-[#0284C7]" aria-hidden="true" />
+                                            <li key={measure} className="flex items-center gap-2 text-[18px] leading-snug text-[#52616B]">
+                                                <Check className="h-5 w-5 shrink-0 text-[#00A896]" aria-hidden="true" />
                                                 {measure}
                                             </li>
                                         ))}
@@ -639,18 +568,16 @@ export default function UserDashboard() {
                     onMouseEnter={() => speak(`${COMPLETE_OPTION.label}. ${COMPLETE_OPTION.hardwareCue}.`)}
                     aria-pressed={selectedTest === COMPLETE_OPTION.id}
                     style={{ minHeight: 140 }}
-                    className={`flex shrink-0 w-full flex-col gap-3 rounded-2xl border p-4 text-left transition ${
-                        selectedTest === COMPLETE_OPTION.id
-                            ? "border-[3px] border-[#0284C7] bg-[#F0F9FF] shadow-[0_0_22px_-8px_rgba(2,132,199,0.45)]"
-                            : "border border-[#E2E8F0] bg-white hover:border-[#0284C7]/40 hover:shadow-[0_4px_14px_-8px_rgba(2,132,199,0.2)]"
+                    className={`flex w-full shrink-0 flex-col gap-3 rounded-2xl border p-4 text-left transition ${FOCUS_RING} ${
+                        selectedTest === COMPLETE_OPTION.id ? CARD_SELECTED : CARD_IDLE
                     }`}
                 >
                     <div className="flex items-center justify-between gap-2">
-                        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+                        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${ICON_TILE}`}>
                             <COMPLETE_OPTION.icon className="h-7 w-7" aria-hidden="true" />
                         </span>
                         <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1.5 rounded-full bg-[#DCFCE7] px-2.5 py-1 text-xs font-bold text-[#15803D]">
+                            <span className="flex items-center gap-1.5 rounded-full bg-[#E6F4EA] px-2.5 py-1 text-xs font-bold text-[#197A55]">
                                 <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                                 {t("deviceReady")}
                             </span>
@@ -658,7 +585,7 @@ export default function UserDashboard() {
                                 aria-hidden="true"
                                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition ${
                                     selectedTest === COMPLETE_OPTION.id
-                                        ? "border-[#0284C7] bg-[#0284C7] text-white"
+                                        ? "border-[#00A896] bg-[#00A896] text-white"
                                         : "border-[#CBD5E1] bg-white text-transparent"
                                 }`}
                             >
@@ -668,13 +595,10 @@ export default function UserDashboard() {
                     </div>
 
                     <div>
-                        <p style={scaled(20)} className="font-bold leading-snug text-[#0F172A] text-balance">
+                        <p className="text-[20px] font-bold leading-snug text-[#17212B] text-balance">
                             {COMPLETE_OPTION.label}
                         </p>
-                        <span
-                            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#1E40AF] px-3 py-1.5 font-bold text-white"
-                            style={scaled(14)}
-                        >
+                        <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#0B6E64] px-3 py-1.5 text-[14px] font-bold text-white">
                             <Scale className="h-4 w-4" aria-hidden="true" />
                             {COMPLETE_OPTION.hardwareCue}
                         </span>
@@ -684,8 +608,8 @@ export default function UserDashboard() {
                         {COMPLETE_OPTION.columns.map((col, cIdx) => (
                             <ul key={cIdx} className="flex flex-col gap-y-1.5">
                                 {col.map((measure) => (
-                                    <li key={measure} style={scaled(18)} className="flex items-center gap-2 leading-snug text-[#334155]">
-                                        <Check className="h-5 w-5 shrink-0 text-[#0284C7]" aria-hidden="true" />
+                                    <li key={measure} className="flex items-center gap-2 text-[18px] leading-snug text-[#52616B]">
+                                        <Check className="h-5 w-5 shrink-0 text-[#00A896]" aria-hidden="true" />
                                         {measure}
                                     </li>
                                 ))}
@@ -696,12 +620,14 @@ export default function UserDashboard() {
             </div>
 
             {/* ============ Sticky Bottom Action Bar ============ */}
-            <div className="relative z-30 flex shrink-0 flex-wrap items-center justify-between gap-4 border-t border-slate-200 bg-white p-4 sm:px-8">
+            <div
+                style={zoomStyle}
+                className="relative z-30 flex shrink-0 flex-wrap items-center justify-between gap-4 border-t border-[#E2E8F0] bg-white p-4 sm:px-8"
+            >
                 <button
                     type="button"
                     onClick={() => logout()}
-                    className="flex h-14 items-center gap-2 rounded-full border border-slate-300 bg-white px-6 font-bold text-[#334155] transition hover:bg-slate-100 hover:text-[#0F172A]"
-                    style={scaled(16)}
+                    className={`flex h-14 items-center gap-2 rounded-full border border-slate-300 bg-white px-6 text-[16px] font-bold text-[#52616B] transition hover:bg-slate-100 hover:text-[#17212B] ${FOCUS_RING}`}
                 >
                     {t("logOut")}
                 </button>
@@ -709,44 +635,51 @@ export default function UserDashboard() {
                 <button
                     type="button"
                     onClick={handleBeginTest}
-                    disabled={!selectedTest || (selectedTest !== "complete" && deviceStatus[selectedTest] === "offline")}
-                    className={`flex h-14 items-center gap-3 rounded-full px-8 font-extrabold text-white shadow-lg transition ${
-                        !selectedTest || (selectedTest !== "complete" && deviceStatus[selectedTest] === "offline")
+                    disabled={beginDisabled}
+                    className={`flex h-14 items-center gap-3 rounded-full px-8 text-[18px] font-extrabold shadow-lg transition ${FOCUS_RING} ${
+                        beginDisabled
                             ? "cursor-not-allowed bg-slate-300 text-slate-500 shadow-none"
-                            : "bg-[#0284C7] hover:bg-[#0284C7]/90 active:scale-95"
+                            : "bg-gradient-to-br from-[#00A896] to-[#0B6E64] text-white shadow-[0_8px_20px_-8px_rgba(0,168,150,0.6)] hover:brightness-95 active:scale-95"
                     }`}
-                    style={scaled(18)}
                 >
                     {t("beginTest")}
                     <ArrowRight className="h-6 w-6" aria-hidden="true" />
                 </button>
             </div>
 
-            {/* ============ Floating QR Code Trigger Button ============ */}
-            <button
+            {/* ============ Floating QR box (gently moving to draw the eye) ============ */}
+            <motion.button
                 type="button"
                 onClick={openQrModal}
-                aria-label="Mobile Sync via QR Code"
-                className="fixed bottom-20 right-6 z-40 flex h-14 items-center gap-3 rounded-full bg-[#0284C7] px-5 py-3.5 text-white shadow-xl hover:bg-[#0369A1] focus:outline-none focus:ring-4 focus:ring-sky-300 active:scale-95 transition-all"
+                aria-label="Open QR code to view your pass on your phone"
+                animate={reduceMotion ? undefined : { y: [0, -14, 0], rotate: [0, -3, 3, 0] }}
+                transition={reduceMotion ? undefined : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                whileTap={{ scale: 0.94 }}
+                className="fixed bottom-24 right-6 z-40 flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white bg-[#00A896] text-white shadow-[0_12px_28px_-8px_rgba(0,168,150,0.7)] focus:outline-none focus:ring-4 focus:ring-[#00A896]/40"
             >
-                <QrCode className="h-6 w-6" aria-hidden="true" />
-                <span className="font-bold text-sm sm:text-base">Mobile Sync</span>
-            </button>
+                {!reduceMotion && (
+                    <span
+                        aria-hidden="true"
+                        className="absolute inset-0 -z-10 animate-ping rounded-3xl bg-[#00A896]/40"
+                    />
+                )}
+                <QrCode className="h-14 w-14" strokeWidth={1.75} aria-hidden="true" />
+            </motion.button>
 
             {/* ============ QR Modal ============ */}
             <AnimatePresence>
                 {qrOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="relative w-full max-w-lg rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200"
+                            className="relative w-full max-w-lg rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-2xl sm:p-8"
                         >
                             <button
                                 type="button"
                                 onClick={closeQrModal}
-                                className="absolute top-5 right-5 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                                className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200"
                                 aria-label="Close QR Modal"
                             >
                                 <X className="h-5 w-5" />
@@ -754,35 +687,35 @@ export default function UserDashboard() {
 
                             {qrStep === "instructions" ? (
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-100 text-[#0284C7] mb-4">
+                                    <div className={`mb-4 flex h-16 w-16 items-center justify-center rounded-2xl ${ICON_TILE}`}>
                                         <QrCode className="h-8 w-8" />
                                     </div>
-                                    <h2 className="text-2xl font-extrabold text-[#0F172A] mb-2">
+                                    <h2 className="mb-2 text-2xl font-extrabold text-[#17212B]">
                                         Open Your Pass on Your Phone
                                     </h2>
-                                    <p className="text-slate-600 mb-6 text-sm sm:text-base leading-relaxed">
+                                    <p className="mb-6 text-sm leading-relaxed text-[#52616B] sm:text-base">
                                         Scan the QR code to open your kiosk check-in pass on your personal phone. You can save it and show it to the kiosk scanner next time.
                                     </p>
 
-                                    <div className="w-full space-y-3 text-left mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-sm">
-                                        <div className="flex items-start gap-3">
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0284C7] text-xs font-bold text-white">1</span>
-                                            <span className="text-slate-700">Open your smartphone camera or QR reader app.</span>
-                                        </div>
-                                        <div className="flex items-start gap-3">
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0284C7] text-xs font-bold text-white">2</span>
-                                            <span className="text-slate-700">Point camera at the QR code on the next screen.</span>
-                                        </div>
-                                        <div className="flex items-start gap-3">
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0284C7] text-xs font-bold text-white">3</span>
-                                            <span className="text-slate-700">Save the pass to your phone if you want to reuse it.</span>
-                                        </div>
+                                    <div className="mb-6 w-full space-y-3 rounded-2xl border border-[#E2E8F0] bg-[#F5F8FA] p-4 text-left text-sm">
+                                        {[
+                                            "Open your smartphone camera or QR reader app.",
+                                            "Point camera at the QR code on the next screen.",
+                                            "Save the pass to your phone if you want to reuse it.",
+                                        ].map((step, i) => (
+                                            <div key={step} className="flex items-start gap-3">
+                                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0B6E64] text-xs font-bold text-white">
+                                                    {i + 1}
+                                                </span>
+                                                <span className="text-[#17212B]">{step}</span>
+                                            </div>
+                                        ))}
                                     </div>
 
                                     <button
                                         type="button"
                                         onClick={() => setQrStep("code")}
-                                        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#0284C7] font-bold text-white shadow-md hover:bg-[#0369A1] transition"
+                                        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#00A896] font-bold text-white shadow-md transition hover:bg-[#0B6E64]"
                                     >
                                         Display QR Code
                                         <ArrowRight className="h-5 w-5" />
@@ -790,10 +723,10 @@ export default function UserDashboard() {
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center text-center">
-                                    <h2 className="text-2xl font-extrabold text-[#0F172A] mb-1">Scan QR Code</h2>
-                                    <p className="text-slate-500 text-sm mb-6">Point your phone camera at the code to open your pass</p>
+                                    <h2 className="mb-1 text-2xl font-extrabold text-[#17212B]">Scan QR Code</h2>
+                                    <p className="mb-6 text-sm text-[#52616B]">Point your phone camera at the code to open your pass</p>
 
-                                    <div className="relative flex h-64 w-64 items-center justify-center rounded-2xl border-2 border-dashed border-[#0284C7] bg-slate-50 p-4 mb-6 shadow-inner">
+                                    <div className="relative mb-6 flex h-64 w-64 items-center justify-center rounded-2xl border-2 border-dashed border-[#00A896] bg-[#E6F7F5] p-4 shadow-inner">
                                         {QR_DESTINATION_URL ? (
                                             <div
                                                 role="img"
@@ -805,13 +738,13 @@ export default function UserDashboard() {
                                         ) : qrStatus === "error" ? (
                                             <div role="alert" className="flex flex-col items-center justify-center gap-2 px-2 text-center">
                                                 <AlertTriangle className="h-12 w-12 text-[#D97706]" aria-hidden="true" />
-                                                <span className="text-sm font-semibold text-[#334155]">
+                                                <span className="text-sm font-semibold text-[#52616B]">
                                                     We couldn&apos;t prepare your pass. Please ask a staff member for help.
                                                 </span>
                                             </div>
                                         ) : (
-                                            <div role="status" className="flex flex-col items-center justify-center gap-2 text-slate-500">
-                                                <Loader2 className="h-12 w-12 text-[#0284C7] motion-safe:animate-spin" aria-hidden="true" />
+                                            <div role="status" className="flex flex-col items-center justify-center gap-2 text-[#52616B]">
+                                                <Loader2 className="h-12 w-12 text-[#00A896] motion-safe:animate-spin" aria-hidden="true" />
                                                 <span className="text-xs font-semibold">Preparing your QR code…</span>
                                             </div>
                                         )}
@@ -821,7 +754,7 @@ export default function UserDashboard() {
                                         <button
                                             type="button"
                                             onClick={() => setQrStep("instructions")}
-                                            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 transition"
+                                            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-slate-300 font-bold text-[#17212B] transition hover:bg-slate-100"
                                         >
                                             <ArrowLeft className="h-4 w-4" />
                                             Back
@@ -829,7 +762,7 @@ export default function UserDashboard() {
                                         <button
                                             type="button"
                                             onClick={closeQrModal}
-                                            className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#0284C7] font-bold text-white hover:bg-[#0369A1] transition"
+                                            className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#00A896] font-bold text-white transition hover:bg-[#0B6E64]"
                                         >
                                             Done
                                         </button>
@@ -841,36 +774,34 @@ export default function UserDashboard() {
                 )}
             </AnimatePresence>
 
-            {/* ============ Inactivity Warning Modal ============ */}
+            {/* ============ Inactivity Warning Modal (amber = warning status, intentionally not brand) ============ */}
             <AnimatePresence>
                 {showTimeoutModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
-                            className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 text-center shadow-2xl border border-amber-200"
+                            className="w-full max-w-md rounded-3xl border border-amber-200 bg-white p-6 text-center shadow-2xl sm:p-8"
                         >
-                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600 mb-4">
+                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
                                 <AlertTriangle className="h-8 w-8" />
                             </div>
-                            <h3 className="text-2xl font-bold text-slate-900 mb-2">{t("needMoreTime")}</h3>
-                            <p className="text-slate-600 text-sm mb-6">{t("needMoreTimeBody")}</p>
-                            <div className="text-3xl font-black text-amber-600 mb-6 font-mono">
-                                {secondsLeft}s
-                            </div>
+                            <h3 className="mb-2 text-2xl font-bold text-[#17212B]">{t("needMoreTime")}</h3>
+                            <p className="mb-6 text-sm text-[#52616B]">{t("needMoreTimeBody")}</p>
+                            <div className="mb-6 font-mono text-3xl font-black text-amber-600">{secondsLeft}s</div>
                             <div className="flex flex-col gap-3">
                                 <button
                                     type="button"
                                     onClick={extendSession}
-                                    className="flex h-12 w-full items-center justify-center rounded-full bg-[#0284C7] font-bold text-white hover:bg-[#0369A1] transition shadow-md"
+                                    className="flex h-12 w-full items-center justify-center rounded-full bg-[#00A896] font-bold text-white shadow-md transition hover:bg-[#0B6E64]"
                                 >
                                     {t("extendSession")}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => logout()}
-                                    className="flex h-12 w-full items-center justify-center rounded-full border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 transition"
+                                    className="flex h-12 w-full items-center justify-center rounded-full border border-slate-300 font-bold text-[#17212B] transition hover:bg-slate-100"
                                 >
                                     {t("logOutNow")}
                                 </button>

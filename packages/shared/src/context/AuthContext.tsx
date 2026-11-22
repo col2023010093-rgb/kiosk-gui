@@ -4,6 +4,8 @@ import type { User } from "@generick/shared";
 import { AuthContext } from "./authContextState";
 import { supabase } from "@generick/shared";
 import { fetchProfileForAuthId, loginRequest, loginWithBarcodeRequest, logoutRequest } from "@generick/shared";
+const isResetRoute = () => window.location.pathname.startsWith("/reset-password");
+
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<User | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -15,7 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		void supabase.auth
 			.getSession()
 			.then(async ({ data }) => {
-				const authId = data.session?.user.id;
+				const authId = isResetRoute() ? undefined : data.session?.user.id;
 				const profile = authId ? await fetchProfileForAuthId(authId).catch(() => null) : null;
 				if (!cancelled) setUser(profile);
 			})
@@ -27,15 +29,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			});
 
 		// Keep in sync with sign-in/sign-out happening elsewhere (other tabs, token refresh, etc.).
-		const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
-			if (!session?.user) {
-				setUser(null);
-				return;
-			}
-			const profile = await fetchProfileForAuthId(session.user.id).catch(() => null);
-			setUser(profile);
+		const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+		if (_event === "PASSWORD_RECOVERY" || isResetRoute() || !session?.user) {
+			setUser(null);
 			setLoading(false);
-		});
+			return;
+		}
+		// Don't call Supabase inside this callback: it deadlocks the auth lock.
+		// Defer it until the callback has returned.
+		const authId = session.user.id;
+		setTimeout(() => {
+			void fetchProfileForAuthId(authId)
+				.catch(() => null)
+				.then((profile) => {
+					if (cancelled) return;
+					setUser(profile);
+					setLoading(false);
+				});
+		}, 0);
+	});
 
 		return () => {
 			cancelled = true;

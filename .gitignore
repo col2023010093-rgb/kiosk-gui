@@ -5,3 +5,13 @@ __pycache__/
 *.pyc
 dist/
 .vite/
+.lgd-*
+
+*.db
+*.db-wal
+*.db-shm
+kiosk.env
+
+__pycache__/
+supabase/.temp/
+*.bak

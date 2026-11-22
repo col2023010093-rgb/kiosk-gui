@@ -3,7 +3,7 @@
 # this code is currently for python 2.7
 from __future__ import print_function
 from time import sleep
-import smbus
+import smbus2 as smbus
 
 # register addresses
 REG_INTR_STATUS_1 = 0x00

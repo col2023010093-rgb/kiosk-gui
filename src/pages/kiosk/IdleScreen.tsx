@@ -38,7 +38,7 @@ export default function IdleScreen() {
     }, []);
 
     const handleTap = () => {
-        navigate("/login", { state: { from: "/kiosk/scan" } });
+        navigate("/login");
     };
 
     return (
@@ -138,14 +138,14 @@ export default function IdleScreen() {
                         health check
                     </h1>
                     <p className="idle-description mt-6 max-w-xl text-xl sm:text-2xl text-muted">
-                        Sign in to your account below to start your measurement.
+                        Log in to your account below to start your measurement.
                     </p>
                 </div>
 
                 <div className="idle-cta-wrap flex flex-col items-center">
                     <button
                         type="button"
-                        aria-label="Tap to sign in and begin health check"
+                        aria-label="Tap to log in and begin health check"
                         onClick={handleTap}
                         className="idle-button relative flex h-44 w-44 sm:h-56 sm:w-56 items-center justify-center rounded-full border-0 bg-linear-to-br from-accent to-accent-deep shadow-[0_12px_30px_rgba(13,148,136,0.32)] transition-transform active:scale-[0.96] cursor-pointer"
                     >
@@ -172,7 +172,7 @@ export default function IdleScreen() {
                     </button>
 
                     <div className="idle-button-label mt-7 font-mono text-lg sm:text-2xl font-semibold uppercase tracking-[0.25em] text-accent-deep">
-                        Touch to sign in
+                        Touch to log in
                     </div>
                 </div>
             </main>
@@ -184,7 +184,7 @@ export default function IdleScreen() {
                         01
                     </span>
                     <div>
-                        <div className="text-xl sm:text-2xl font-semibold leading-tight">Sign In</div>
+                        <div className="text-xl sm:text-2xl font-semibold leading-tight">Log In</div>
                         <span className="text-base sm:text-lg font-normal text-muted">
                             Or create an account
                         </span>
