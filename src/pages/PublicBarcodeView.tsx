@@ -52,6 +52,13 @@ function MessageCard({ icon: Icon, title, body }: MessageCardProps) {
 	);
 }
 
+/** Friendly remaining time: days for long passes, hours for medium, minutes for short. */
+function formatTimeLeft(minutes: number): string {
+        if (minutes >= 2 * 24 * 60) return `${Math.round(minutes / (24 * 60))} days`;
+        if (minutes >= 120) return `${Math.round(minutes / 60)} hours`;
+        return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+}
+
 export default function PublicBarcodeView() {
 	usePrivateMeta();
 
@@ -82,7 +89,7 @@ export default function PublicBarcodeView() {
 	return (
 		<div className="flex min-h-dvh w-full flex-col items-center bg-[#F8FAFC] px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] font-body text-[#0F172A]">
 			<header className="mb-5 flex w-full max-w-sm items-center gap-3">
-				<div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0284C7] text-white">
+				<div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0F766E] text-white">
 					<HeartPulse className="h-6 w-6" strokeWidth={2.25} aria-hidden="true" />
 				</div>
 				<div className="leading-tight">
@@ -104,7 +111,7 @@ export default function PublicBarcodeView() {
 					<MessageCard
 						icon={Clock}
 						title="This pass has expired"
-						body="For your privacy, passes only work for a few minutes. Please show a new QR code on the kiosk and scan it again."
+						body="For your privacy, passes expire after a while. Please get a new QR code from your account and try again."
 					/>
 				)}
 
@@ -113,7 +120,7 @@ export default function PublicBarcodeView() {
 						{/* ---- Summary ---- */}
 						<section aria-label="Pass details" className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
 							<div className="flex items-center gap-3">
-								<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[#0284C7]">
+								<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#CCFBF1] text-[#0F766E]">
 									<User className="h-5 w-5" aria-hidden="true" />
 								</span>
 								<div className="min-w-0">
@@ -133,7 +140,7 @@ export default function PublicBarcodeView() {
 									type="button"
 									onClick={() => setIdRevealed((v) => !v)}
 									aria-pressed={idRevealed}
-									className="flex h-12 shrink-0 items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-3 text-sm font-semibold text-[#0284C7] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0284C7]/40 focus-visible:ring-offset-2"
+									className="flex h-12 shrink-0 items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-3 text-sm font-semibold text-[#0F766E] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]/40 focus-visible:ring-offset-2"
 								>
 									{idRevealed ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
 									{idRevealed ? "Hide" : "Show"}
@@ -142,7 +149,7 @@ export default function PublicBarcodeView() {
 
 							<p role="status" className="inline-flex items-center gap-2 text-sm font-semibold text-[#334155]">
 								<Clock className="h-4 w-4" aria-hidden="true" />
-								Valid for about {minutesLeft} more {minutesLeft === 1 ? "minute" : "minutes"}
+								Valid for about {formatTimeLeft(minutesLeft)} more
 							</p>
 						</section>
 
@@ -152,7 +159,7 @@ export default function PublicBarcodeView() {
 								ref={qrWrapRef}
 								role="img"
 								aria-label="QR code for your kiosk check-in pass"
-								className="flex w-full max-w-[264px] items-center justify-center rounded-2xl border-2 border-dashed border-[#0284C7] bg-white p-3"
+								className="flex w-full max-w-[264px] items-center justify-center rounded-2xl border-2 border-dashed border-[#0F766E] bg-white p-3"
 							>
 								<QRCodeCanvas
 									value={parsed.params.id}
@@ -163,7 +170,7 @@ export default function PublicBarcodeView() {
 								/>
 							</div>
 							<p className="flex items-start gap-2 text-center text-sm font-medium leading-snug text-[#334155]">
-								<ScanLine className="mt-0.5 h-4 w-4 shrink-0 text-[#0284C7]" aria-hidden="true" />
+								<ScanLine className="mt-0.5 h-4 w-4 shrink-0 text-[#0F766E]" aria-hidden="true" />
 								Turn your screen brightness up and hold this code about 6 inches (15 cm) below the kiosk's red-light scanner.
 							</p>
 						</section>
@@ -171,7 +178,7 @@ export default function PublicBarcodeView() {
 						<button
 							type="button"
 							onClick={handleSave}
-							className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#0284C7] text-base font-bold text-white shadow-md transition hover:bg-[#0369A1] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0284C7]/40 focus-visible:ring-offset-2"
+							className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#0F766E] text-base font-bold text-white shadow-md transition hover:bg-[#115E59] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]/40 focus-visible:ring-offset-2"
 						>
 							<Download className="h-5 w-5" aria-hidden="true" />
 							Save image to phone

@@ -9,7 +9,7 @@
 export const PUBLIC_BARCODE_PATH = "/public-barcode";
 
 /** How long a generated link stays usable on the phone. */
-export const PUBLIC_BARCODE_TTL_MS = 10 * 60 * 1000;
+export const PUBLIC_BARCODE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 const ID_PATTERN = /^[A-Za-z0-9._-]{1,40}$/;
 const MAX_LABEL_LENGTH = 60;
