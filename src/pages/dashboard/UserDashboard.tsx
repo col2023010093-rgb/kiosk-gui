@@ -324,6 +324,7 @@ export default function UserDashboard() {
 
     useEffect(() => {
         if (secondsLeft > SESSION_WARNING_THRESHOLD && warningAcknowledged) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- resets local UI state when the timer changes; refactor later
             setWarningAcknowledged(false);
         }
     }, [secondsLeft, warningAcknowledged]);
