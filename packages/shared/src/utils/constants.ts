@@ -1,5 +1,5 @@
 // packages/shared/src/utils/constants.ts
-import type { UserRole } from "../types"; // 👈 Relative import inside shared package
+import type { UserRole } from "../types/User";
 
 export const APP_NAME = "VitalCheck";
 

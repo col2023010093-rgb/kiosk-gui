@@ -18,7 +18,6 @@ import { Toast, type ToastMessage } from "@generick/shared";
 import { useAuth } from "@generick/shared";
 import { useUsbScanner } from "@generick/shared";
 import { playScanSuccessTone, playScanErrorTone } from "@generick/shared";
-import { ROLE_HOME_ROUTE } from "@generick/shared";
 import VirtualKeyboard from "../../components/kiosk/VirtualKeyboard";
 import AccessibilityToolbar from "../../components/kiosk/AccessibilityToolbar";
 import { FONT_SCALES, type FontScaleIndex } from "../../lib/kioskAccessibility";
@@ -184,7 +183,6 @@ type KioskAuth = ReturnType<typeof useAuth>;
 export default function Login() {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const from = (location.state as { from?: string } | null)?.from;
 	const notice = (location.state as { notice?: string } | null)?.notice;
 	const auth = useAuth() as KioskAuth;
 	const { login, loginWithBarcode } = auth;

@@ -1,4 +1,4 @@
-import type { Report } from "@generick/shared";
+import type { Report } from "../types/Report";
 
 /**
  * Static placeholder data — there is no `reports` table or Supabase query
