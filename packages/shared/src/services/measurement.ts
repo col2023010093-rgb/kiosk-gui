@@ -80,6 +80,14 @@ async function fetchSensor<T>(url: string, label: string): Promise<T> {
 	return response.json();
 }
 
+/** Rejects missing, non-numeric or physically impossible sensor values so they are never shown or saved. */
+function requireFiniteNumber(value: unknown, label: string, min: number, max: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
+    throw new Error(`${label} sensor returned an invalid reading. Please retry.`);
+  }
+  return value;
+}
+
 // Physical sensor capture — unrelated to Supabase, left as-is. heightWeight,
 // heartRateSpo2 and temperature read from real hardware via sensor_server.py.
 // bloodPressure still has no hardware endpoint wired up, so it returns
@@ -93,7 +101,7 @@ const SENSOR_READERS: Record<SensorKey, SensorReader> = {
 			// Sequential on purpose: sensor_server.py runs with threaded=False.
 			// 1) Height
 			const { heightCm: rawHeight } = await fetchSensor<{ heightCm: number }>(HEIGHT_URL, "Height");
-			const heightCm = round1(rawHeight);
+			const heightCm = round1(requireFiniteNumber(rawHeight, "Height", 0, 1000));
 			if (heightCm < MIN_HEIGHT_CM || heightCm > MAX_HEIGHT_CM) {
 				throw new Error(`Implausible height reading (${Math.round(heightCm)} cm). Please stand straight under the sensor.`);
 			}
@@ -101,7 +109,7 @@ const SENSOR_READERS: Record<SensorKey, SensorReader> = {
 
 			// 2) Weight (waits for the person to stand still)
 			const { weightKg: rawWeight } = await fetchSensor<{ weightKg: number }>(WEIGHT_URL, "Weight");
-			const weightKg = round1(rawWeight);
+			const weightKg = round1(requireFiniteNumber(rawWeight, "Weight", 1, 350));
 			onPartial?.({ weightKg });
 
 			// 3) BMI, calculated from the two. Short pause so the UI visibly "calculates".
@@ -125,14 +133,17 @@ const SENSOR_READERS: Record<SensorKey, SensorReader> = {
 		simulated: false,
 		read: async () => {
 			const data = await fetchSensor<{ bpm: number; spo2: number }>(HEART_RATE_SPO2_URL, "Heart rate/SpO2");
-			return { heartRate: data.bpm, oxygenSaturation: data.spo2 };
+			return {
+			  heartRate: Math.round(requireFiniteNumber(data.bpm, "Heart rate", 30, 220)),
+			  oxygenSaturation: Math.round(requireFiniteNumber(data.spo2, "Oxygen saturation", 70, 100)),
+			};
 		},
 	},
 	temperature: {
 		simulated: false,
 		read: async () => {
 			const data = await fetchSensor<{ celsius: number }>(TEMPERATURE_URL, "Temperature");
-			return { temperatureCelsius: data.celsius };
+			return { temperatureCelsius: round1(requireFiniteNumber(data.celsius, "Temperature", 25, 45)) };
 		},
 	},
 };
