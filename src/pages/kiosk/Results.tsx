@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import type { ElementType } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
-import { useKioskSession } from "../../context/KioskSessionContext";import { getGenericRecommendations } from "@generick/shared";
+import { useKioskSession } from "../../context/kioskSessionState";
+import { getGenericRecommendations } from "@generick/shared";
 import { DemoModeBanner } from "../../components/DemoModeBanner";
 import type { VitalStatus } from "@generick/shared";
 

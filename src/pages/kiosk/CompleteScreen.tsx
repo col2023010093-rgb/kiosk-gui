@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
-import { useKioskSession } from "../../context/KioskSessionContext";
+import { useKioskSession } from "../../context/kioskSessionState";
 const RETURN_SECONDS = 8;
 
 export default function CompleteScreen() {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useContext } from "react"; // 👈 Added useContext
+import { useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import type { Patient } from "@generick/shared";
 import type { AssessmentResult } from "@generick/shared";
@@ -26,13 +26,4 @@ export function KioskSessionProvider({ children }: { children: ReactNode }) {
             {children}
         </KioskSessionContext.Provider>
     );
-}
-
-// 👈 Add this hook export
-export function useKioskSession() {
-    const context = useContext(KioskSessionContext);
-    if (!context) {
-        throw new Error("useKioskSession must be used within a KioskSessionProvider");
-    }
-    return context;
 }

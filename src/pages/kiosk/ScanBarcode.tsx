@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ScanLine, X, Keyboard } from "lucide-react";
 import { useUsbScanner, findPatientByBarcode } from "@generick/shared";
-import { useKioskSession } from "../../context/KioskSessionContext";
+import { useKioskSession } from "../../context/kioskSessionState";
 
 export default function ScanBarcode() {
     const navigate = useNavigate();

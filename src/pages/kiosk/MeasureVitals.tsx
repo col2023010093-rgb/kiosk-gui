@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ElementType } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, HeartPulse, Droplet, Thermometer, Ruler, Check, Loader2 } from "lucide-react";
-import { useKioskSession } from "../../context/KioskSessionContext";
+import { useKioskSession } from "../../context/kioskSessionState";
 import { runAssessment, saveHealthRecord } from "@generick/shared";
 
 interface Step {
