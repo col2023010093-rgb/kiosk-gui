@@ -46,13 +46,15 @@ on the kiosk's own network. Lock it down before exposing it beyond that.
 """
 
 import time
+import os
 
 from flask import Flask, jsonify
 from flask_cors import CORS
 from heartrate_monitor import HeartRateMonitor
 
 app = Flask(__name__)
-CORS(app)  # allows the Vite dev server (different port) to fetch this during testing
+allowed_origins = [origin.strip() for origin in os.getenv("SENSOR_ALLOWED_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
+CORS(app, origins=allowed_origins)
 
 SAMPLE_SECONDS = 5  # how long to let the sensor collect data before reading bpm/spo2
 
@@ -86,4 +88,4 @@ def get_heart_rate_spo2():
 
 if __name__ == "__main__":
     # host="0.0.0.0" so the frontend can reach it by the Pi's IP, not just localhost.
-    app.run(host="0.0.0.0", port=5001)
+    app.run(host=os.getenv("SENSOR_HOST", "127.0.0.1"), port=5001)

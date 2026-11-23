@@ -1,10 +1,8 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { UserX } from "lucide-react";
 
 export default function NotRegistered() {
 	const navigate = useNavigate();
-	const location = useLocation();
-	const barcode = (location.state as { barcode?: string } | null)?.barcode;
 
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center bg-bg px-6 text-center text-ink">
@@ -13,13 +11,7 @@ export default function NotRegistered() {
 			</div>
 			<h1 className="mt-6 text-2xl font-bold text-ink">Patient not registered</h1>
 			<p className="mt-2 max-w-sm text-sm text-muted">
-				{barcode ? (
-					<>
-						We couldn&apos;t find a patient for barcode <span className="font-mono text-ink">#{barcode}</span>.
-					</>
-				) : (
-					"We couldn't find a patient for that barcode."
-				)}{" "}
+				We couldn&apos;t find a patient for that barcode.{" "}
 				Please register at the front desk to continue.
 			</p>
 

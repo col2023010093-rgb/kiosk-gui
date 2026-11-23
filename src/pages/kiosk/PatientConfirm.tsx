@@ -35,8 +35,6 @@ export default function PatientConfirm() {
 			<p className="mt-1 text-sm text-muted">
 				{calculateAge(patient.birthdate)} years old · {patient.sex === "male" ? "Male" : "Female"}
 			</p>
-			<p className="mt-1 font-mono text-xs text-muted">Barcode #{patient.identification_number}</p>
-
 			<div className="mt-10 flex w-full max-w-sm flex-col gap-3">
 				<button
 					onClick={() => navigate("/kiosk/measure")}
