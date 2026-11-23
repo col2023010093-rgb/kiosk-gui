@@ -286,7 +286,8 @@ export default function UserDashboard() {
 
     // --- 60-second inactivity countdown -----------------------------------------
     const [secondsLeft, setSecondsLeft] = useState(INACTIVITY_LIMIT_SECONDS);
-    const lastActivityRef = useRef(Date.now());
+    const [initialActivityTime] = useState(() => Date.now());
+    const lastActivityRef = useRef(initialActivityTime);
     const [warningAcknowledged, setWarningAcknowledged] = useState(false);
 
     useEffect(() => {

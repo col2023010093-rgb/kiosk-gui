@@ -197,6 +197,7 @@ function FieldSelect({
 
 	// Close if the field becomes disabled while open (e.g. parent resets).
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- resets local UI state when a prop/timer changes; refactor later
 		if (disabled) setOpen(false);
 	}, [disabled]);
 
@@ -425,7 +426,8 @@ export default function Register() {
 	const INACTIVITY_LIMIT_SECONDS = 60;
 	const SESSION_WARNING_THRESHOLD = 15;
 	const [secondsLeft, setSecondsLeft] = useState(INACTIVITY_LIMIT_SECONDS);
-	const lastActivityRef = useRef(Date.now());
+	const [initialActivityTime] = useState(() => Date.now());
+	const lastActivityRef = useRef(initialActivityTime);
 	useEffect(() => {
 		const resetActivity = () => {
 			lastActivityRef.current = Date.now();

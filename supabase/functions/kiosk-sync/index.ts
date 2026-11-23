@@ -69,11 +69,13 @@ Deno.serve(async (req) => {
     return json({ error: "unauthorized" }, 401); // same answer for unknown kiosk / bad key
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untrusted JSON, validated field by field below
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "invalid json" }, 400); }
 
   // ---- push_records ----------------------------------------------------------------------
   if (body.action === "push_records") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untrusted JSON, validated field by field below
     const records: any[] = Array.isArray(body.records) ? body.records : [];
     if (records.length === 0 || records.length > MAX_RECORDS) {
       return json({ error: `records must contain 1-${MAX_RECORDS} items` }, 400);

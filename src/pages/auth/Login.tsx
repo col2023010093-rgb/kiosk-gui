@@ -253,7 +253,8 @@ export default function Login() {
 	const INACTIVITY_LIMIT_SECONDS = 60;
 	const SESSION_WARNING_THRESHOLD = 15;
 	const [secondsLeft, setSecondsLeft] = useState(INACTIVITY_LIMIT_SECONDS);
-	const lastActivityRef = useRef(Date.now());
+	const [initialActivityTime] = useState(() => Date.now());
+	const lastActivityRef = useRef(initialActivityTime);
 	useEffect(() => {
 		const resetActivity = () => {
 			lastActivityRef.current = Date.now();
