@@ -44,6 +44,7 @@ const ICON_CLASS = "h-6 w-6";
 const STRINGS: Record<LanguageCode, Record<string, string>> = {
 	en: {
 		a11yBarLabel: "Accessibility & Assistance",
+		patientsOnly: "This kiosk is for patients only. Staff, please use the staff portal.",
 		fontSize: "Text size",
 		language: "Language",
 		audioToggleOn: "Audio: ON",
@@ -88,6 +89,7 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 	},
 	es: {
 		a11yBarLabel: "Accesibilidad y asistencia",
+		patientsOnly: "Este quiosco es solo para pacientes. El personal debe usar el portal del personal.",
 		fontSize: "Tamaño del texto",
 		language: "Idioma",
 		audioToggleOn: "Audio: SÍ",
@@ -132,6 +134,7 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 	},
 	tl: {
 		a11yBarLabel: "Accessibility at Tulong",
+		patientsOnly: "Para sa mga pasyente lamang ang kiosk na ito. Staff, gamitin ang staff portal.",
 		fontSize: "Laki ng teksto",
 		language: "Wika",
 		audioToggleOn: "Audio: ON",
@@ -182,6 +185,7 @@ export default function Login() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const from = (location.state as { from?: string } | null)?.from;
+	const notice = (location.state as { notice?: string } | null)?.notice;
 	const auth = useAuth() as KioskAuth;
 	const { login, loginWithBarcode } = auth;
 
@@ -215,7 +219,7 @@ export default function Login() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [activeField, setActiveField] = useState<ActiveField>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(() => (notice === "patients-only" ? t("patientsOnly") : null));
 	const [loading, setLoading] = useState(false);
 	const [scanning, setScanning] = useState(false);
 	const [toast, setToast] = useState<ToastMessage | null>(null);

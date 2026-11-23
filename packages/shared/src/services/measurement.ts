@@ -1,5 +1,4 @@
 import { supabase, saveRecordLocal, LocalApiUnavailableError } from "@generick/shared";
-import { getVitalStatus } from "@generick/shared";
 import { VITAL_RANGES } from "@generick/shared";
 import type {
 	AssessmentResult,
@@ -305,4 +304,3 @@ export async function listRecentHealthRecords(limit = 50): Promise<HealthRecordW
 	}));
 }
 
-export { getVitalStatus };
