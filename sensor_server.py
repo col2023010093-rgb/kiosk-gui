@@ -89,7 +89,8 @@ from mlx90614 import MLX90614
 from heartrate_monitor import HeartRateMonitor
 
 app = Flask(__name__)
-CORS(app)  # allows the Vite dev server (different port) to fetch this during testing
+allowed_origins = [o.strip() for o in os.getenv("SENSOR_ALLOWED_ORIGINS", "http://localhost,http://127.0.0.1,http://localhost:5173").split(",") if o.strip()]
+CORS(app, origins=allowed_origins)
 
 I2C_BUS = 1
 
@@ -560,4 +561,4 @@ def get_calibration():
 
 if __name__ == "__main__":
     # threaded=False keeps one sensor read at a time on the shared I2C bus.
-    app.run(host="0.0.0.0", port=5000, threaded=False)
+    app.run(host=os.getenv("SENSOR_HOST", "127.0.0.1"), port=5000, threaded=False)

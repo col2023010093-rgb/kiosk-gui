@@ -44,6 +44,7 @@ const HEIGHT_URL = "/api/height";
 const WEIGHT_URL = "/api/weight";
 const HEART_RATE_SPO2_URL = "/api/heart-rate-spo2";
 const TEMPERATURE_URL = "/api/temperature";
+const SENSOR_TIMEOUT_MS = 45000; // heart rate alone takes ~12 s, so leave headroom
 
 const MIN_HEIGHT_CM = 100;
 const MAX_HEIGHT_CM = 220;
@@ -63,7 +64,15 @@ interface SensorReader {
 
 /** Fetches a sensor endpoint and surfaces the server's { error } message on failure. */
 async function fetchSensor<T>(url: string, label: string): Promise<T> {
-	const response = await fetch(url);
+	let response: Response;
+	try {
+	  response = await fetch(url, { signal: AbortSignal.timeout(SENSOR_TIMEOUT_MS) });
+	} catch (error) {
+	  if (error instanceof DOMException && error.name === "TimeoutError") {
+	    throw new Error(`${label} sensor timed out. Check that the device is connected and retry.`, { cause: error });
+	  }
+	  throw new Error(`${label} sensor is unavailable.`, { cause: error });
+	}
 	if (!response.ok) {
 		const body = await response.json().catch(() => ({}));
 		throw new Error(body.error ?? `${label} sensor request failed (${response.status})`);

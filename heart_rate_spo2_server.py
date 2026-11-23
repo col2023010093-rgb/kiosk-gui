@@ -53,7 +53,7 @@ from flask_cors import CORS
 from heartrate_monitor import HeartRateMonitor
 
 app = Flask(__name__)
-allowed_origins = [origin.strip() for origin in os.getenv("SENSOR_ALLOWED_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
+allowed_origins = [origin.strip() for origin in os.getenv("SENSOR_ALLOWED_ORIGINS", "http://localhost,http://127.0.0.1,http://localhost:5173").split(",") if origin.strip()]
 CORS(app, origins=allowed_origins)
 
 SAMPLE_SECONDS = 5  # how long to let the sensor collect data before reading bpm/spo2
