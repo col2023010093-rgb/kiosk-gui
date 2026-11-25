@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ElementType } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, HeartPulse, Droplet, Thermometer, Ruler, Check, Loader2 } from "lucide-react";
+import { HeartPulse, Droplet, Thermometer, Ruler, Check, Loader2 } from "lucide-react";
 import { useKioskSession } from "../../context/kioskSessionState";
 import { runAssessment, saveHealthRecord } from "@generick/shared";
 
@@ -12,7 +12,6 @@ icon: ElementType;
 }
 
 const steps: Step[] = [
-{ key: "bp", label: "Blood Pressure", icon: Activity },
 { key: "hr", label: "Heart Rate", icon: HeartPulse },
 { key: "spo2", label: "Oxygen Saturation", icon: Droplet },
 { key: "temp", label: "Body Temperature", icon: Thermometer },
@@ -43,7 +42,7 @@ index += 1;
 
 if (index >= steps.length) {
 clearInterval(interval);
-void runAssessment(patient.patient_id, "complete")
+void runAssessment(patient.patient_id, "complete", undefined, { skip: ["bloodPressure"] })
 	.then(async (result) => {
 		// Simulated readings (no hardware wired up yet) never touch the
 		// database — Results shows a "Demo Mode" banner instead. Only a

@@ -177,9 +177,10 @@ function computeStatus(reading: Partial<SensorReading>): VitalStatus {
 export async function runAssessment(
 	patientId: string,
 	testType: AssessmentType,
-	onProgress?: (partial: Partial<AssessmentResult>) => void
+	onProgress?: (partial: Partial<AssessmentResult>) => void,
+	options: { skip?: SensorKey[] } = {}
 ): Promise<AssessmentResult> {
-	const sensors = ASSESSMENT_SENSORS[testType];
+	const sensors = ASSESSMENT_SENSORS[testType].filter((key) => !options.skip?.includes(key));
 	const reading: Partial<SensorReading> = {};
 	const simulatedSensors: SensorKey[] = [];
 	for (const sensorKey of sensors) {
