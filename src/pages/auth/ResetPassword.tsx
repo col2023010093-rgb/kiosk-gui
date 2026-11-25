@@ -190,9 +190,9 @@ export default function ResetPassword() {
             <Activity className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden="true" />
           </div>
           <div className="leading-tight">
-            <div className="text-xl font-extrabold text-[#17212B]">GenErick</div>
+            <div className="text-xl font-extrabold text-[#17212B]">Health Monitoring Kiosk</div>
             <div className="text-[11px] font-semibold uppercase tracking-[2px] text-[#52616B]">
-              Health Monitoring Kiosk
+              Self-Service Health Screening
             </div>
           </div>
         </div>

@@ -76,7 +76,7 @@ export default function IdleScreen() {
                             </svg>
                         </div>
                         <div>
-                            <div className="text-3xl sm:text-4xl font-bold tracking-tight">GenErick</div>
+                            <div className="text-3xl sm:text-4xl font-bold tracking-tight">Health Monitoring Kiosk</div>
                             <div className="mt-1 text-sm sm:text-lg font-semibold uppercase tracking-widest text-muted">
                                 Health Monitoring Kiosk
                             </div>

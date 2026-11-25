@@ -93,7 +93,7 @@ export default function PublicBarcodeView() {
 					<HeartPulse className="h-6 w-6" strokeWidth={2.25} aria-hidden="true" />
 				</div>
 				<div className="leading-tight">
-					<p className="text-lg font-extrabold">GenErick</p>
+					<p className="text-lg font-extrabold">Health Monitoring Kiosk</p>
 					<p className="text-xs font-semibold uppercase tracking-[1.5px] text-[#334155]">Kiosk Check-In Pass</p>
 				</div>
 			</header>

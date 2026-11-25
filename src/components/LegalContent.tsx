@@ -6,7 +6,7 @@ export function TermsOfUseContent() {
 			<section>
 				<h3 className="mb-1 font-semibold text-accent-deep">1. Acceptance of the Terms</h3>
 				<p>
-					By creating an account and using the GenErick Health Monitoring Kiosk ("the System"), you agree to
+					By creating an account and using the Health Monitoring Kiosk ("the System"), you agree to
 					these Terms of Use. If you do not agree, please do not create an account or use the kiosk.
 				</p>
 			</section>
@@ -14,7 +14,7 @@ export function TermsOfUseContent() {
 			<section>
 				<h3 className="mb-1 font-semibold text-accent-deep">2. Purpose of the System</h3>
 				<p>
-					GenErick is an academic capstone project that provides a self-service kiosk for taking basic
+					The Health Monitoring Kiosk is an academic capstone project that provides a self-service kiosk for taking basic
 					physiological measurements — such as height, weight, BMI, blood pressure, heart rate, blood
 					oxygen (SpO₂), and body temperature — and for viewing general health information based on those
 					measurements.
@@ -62,7 +62,7 @@ export function TermsOfUseContent() {
 			<section>
 				<h3 className="mb-1 font-semibold text-accent-deep">7. Not a Substitute for Professional Medical Care</h3>
 				<p>
-					The GenErick kiosk is <span className="font-semibold">not a medical device</span> and is not
+					The Health Monitoring Kiosk is <span className="font-semibold">not a medical device</span> and is not
 					intended to diagnose, treat, cure, or prevent any disease or condition. It does not replace
 					consultation with a qualified physician or other healthcare professional. Always seek the
 					advice of a licensed medical provider regarding any health concern, and seek emergency care
