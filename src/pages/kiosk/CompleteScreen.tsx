@@ -40,7 +40,7 @@ export default function CompleteScreen() {
 			<p className="mt-2 max-w-sm text-sm text-muted">
 				{measurement?.isSimulated
 					? "This was a demo run with hardware offline, so nothing was saved. Connect the sensors to record a real screening."
-					: "Your measurements have been saved. View your full results anytime in your account."}
+					: "Your measurements have been saved on this kiosk and will be added to your record automatically."}
 			</p>
 
 			<button

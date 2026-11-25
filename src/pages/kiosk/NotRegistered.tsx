@@ -12,16 +12,10 @@ export default function NotRegistered() {
 			<h1 className="mt-6 text-2xl font-bold text-ink">User not registered</h1>
 			<p className="mt-2 max-w-sm text-sm text-muted">
 				We couldn&apos;t find a user for that barcode.{" "}
-				Please register at the front desk to continue.
+				If you registered recently, your record may not be on this kiosk yet. Please ask the front desk.
 			</p>
 
 			<div className="mt-8 flex w-full max-w-sm flex-col gap-3">
-				<button
-					onClick={() => navigate("/staff/register")}
-					className="rounded-2xl bg-primary py-4 text-base font-semibold text-white transition-colors hover:bg-primary-deep"
-				>
-					Register User
-				</button>
 				<button
 					onClick={() => navigate("/kiosk/scan")}
 					className="rounded-2xl border border-line py-4 text-sm font-medium text-muted hover:border-primary hover:text-primary-deep"

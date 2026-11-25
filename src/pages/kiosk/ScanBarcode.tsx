@@ -1,13 +1,15 @@
 import { useCallback, useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { ScanLine, X, Keyboard } from "lucide-react";
-import { useUsbScanner, findPatientByBarcode } from "@generick/shared";
+import { useUsbScanner, findPatientOffline } from "@generick/shared";
 import { useKioskSession } from "../../context/kioskSessionState";
+import { useSupabaseReachable } from "../../hooks/useSupabaseReachable";
 
 export default function ScanBarcode() {
     const navigate = useNavigate();
     const { setPatient } = useKioskSession();
+    const reachability = useSupabaseReachable();
     const [manualCode, setManualCode] = useState("");
     const [showManual, setShowManual] = useState(false);
     const [checking, setChecking] = useState(false);
@@ -18,7 +20,7 @@ export default function ScanBarcode() {
             setChecking(true);
             setError(null);
             try {
-                const found = await findPatientByBarcode(code);
+                const found = await findPatientOffline(code);
                 if (found) {
                     setPatient(found);
                     navigate("/kiosk/confirm");
@@ -35,12 +37,15 @@ export default function ScanBarcode() {
     );
 
     // Fixed: calling the imported `useUsbScanner` hook instead of undefined `useBarcodeScanner`
-    useUsbScanner(handleScan, true);
+    useUsbScanner(handleScan, reachability === "offline");
 
     function handleManualSubmit(e: FormEvent) {
         e.preventDefault();
         if (manualCode.trim()) handleScan(manualCode.trim());
     }
+
+    if (reachability === "checking") return null;
+    if (reachability === "online") return <Navigate to="/login" replace />;
 
     return (
         <div className="relative flex min-h-screen flex-col items-center justify-center bg-bg px-6 text-ink">

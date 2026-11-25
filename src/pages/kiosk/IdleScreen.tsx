@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSupabaseReachable } from "../../hooks/useSupabaseReachable";
 
 function formatClock(date: Date) {
     return date.toLocaleTimeString("en-US", {
@@ -21,6 +22,7 @@ function formatDate(date: Date) {
 
 export default function IdleScreen() {
     const navigate = useNavigate();
+    const reachability = useSupabaseReachable();
     const [clock, setClock] = useState(() => formatClock(new Date()));
     const [date, setDate] = useState(() => formatDate(new Date()));
 
@@ -38,7 +40,7 @@ export default function IdleScreen() {
     }, []);
 
     const handleTap = () => {
-        navigate("/login");
+        navigate(reachability === "offline" ? "/kiosk/scan" : "/login");
     };
 
     return (
@@ -172,7 +174,7 @@ export default function IdleScreen() {
                     </button>
 
                     <div className="idle-button-label mt-7 font-mono text-lg sm:text-2xl font-semibold uppercase tracking-[0.25em] text-accent-deep">
-                        Touch to log in
+                        {reachability === "offline" ? "No internet: touch to scan your ID" : "Touch to log in"}
                     </div>
                 </div>
             </main>
@@ -184,7 +186,7 @@ export default function IdleScreen() {
                         01
                     </span>
                     <div>
-                        <div className="text-xl sm:text-2xl font-semibold leading-tight">Log In</div>
+                        <div className="text-xl sm:text-2xl font-semibold leading-tight">{reachability === "offline" ? "Scan ID" : "Log In"}</div>
                         <span className="text-base sm:text-lg font-normal text-muted">
                             Or create an account
                         </span>

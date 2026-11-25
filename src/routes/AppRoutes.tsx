@@ -14,6 +14,10 @@ import IdleScreen from "../pages/kiosk/IdleScreen";
 import MeasureVitals from "../pages/kiosk/MeasureVitals";
 import Results from "../pages/kiosk/Results";
 import CompleteScreen from "../pages/kiosk/CompleteScreen";
+import ScanBarcode from "../pages/kiosk/ScanBarcode";
+import PatientConfirm from "../pages/kiosk/PatientConfirm";
+import NotRegistered from "../pages/kiosk/NotRegistered";
+import { useKioskSession } from "../context/kioskSessionState";
 
 import UserDashboard from "../pages/dashboard/UserDashboard";
 import SelfMeasureVitals from "../pages/dashboard/SelfMeasureVitals";
@@ -47,6 +51,16 @@ function UserOnlyRoute({ children }: { children: ReactNode }) {
 	return <>{children}</>;
 }
 
+/**
+ * Pages after the offline scan need a patient picked on the scan screen (kiosk session),
+ * not a Supabase login. With no patient they go back to the idle screen.
+ */
+function KioskPatientRoute({ children }: { children: ReactNode }) {
+        const { patient } = useKioskSession();
+        if (!patient) return <Navigate to="/kiosk" replace />;
+        return <>{children}</>;
+}
+
 export default function AppRoutes() {
 	return (
 		<AuthProvider>
@@ -65,29 +79,32 @@ export default function AppRoutes() {
 				>
 					{/* IdleScreen stays public: it is the pre-login landing screen. */}
 					<Route index element={<IdleScreen />} />
-					{/* Everything past the idle screen requires a real patient login. */}
+					{/* Offline scan flow: the scan page only opens while Supabase is unreachable. */}
+					<Route path="scan" element={<ScanBarcode />} />
+					<Route path="not-registered" element={<NotRegistered />} />
+					<Route path="confirm" element={<KioskPatientRoute><PatientConfirm /></KioskPatientRoute>} />
 					<Route
 						path="measure"
 						element={
-							<UserOnlyRoute>
+							<KioskPatientRoute>
 								<MeasureVitals />
-							</UserOnlyRoute>
+							</KioskPatientRoute>
 						}
 					/>
 					<Route
 						path="results"
 						element={
-							<UserOnlyRoute>
+							<KioskPatientRoute>
 								<Results />
-							</UserOnlyRoute>
+							</KioskPatientRoute>
 						}
 					/>
 					<Route
 						path="complete"
 						element={
-							<UserOnlyRoute>
+							<KioskPatientRoute>
 								<CompleteScreen />
-							</UserOnlyRoute>
+							</KioskPatientRoute>
 						}
 					/>
 				</Route>

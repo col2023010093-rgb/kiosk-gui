@@ -57,7 +57,7 @@ export default function Results() {
 			<div className="mt-8 grid w-full grid-cols-2 gap-3 sm:grid-cols-3">
 				<VitalTile
 					label="Blood Pressure"
-					value={`${measurement.bloodPressureSystolic}/${measurement.bloodPressureDiastolic}`}
+					value={measurement.bloodPressureSystolic != null && measurement.bloodPressureDiastolic != null ? `${measurement.bloodPressureSystolic}/${measurement.bloodPressureDiastolic}` : "Not measured"}
 				/>
 				<VitalTile label="Heart Rate" value={`${measurement.heartRate}`} unit="bpm" />
 				<VitalTile label="SpO2" value={`${measurement.oxygenSaturation}`} unit="%" />
@@ -89,7 +89,7 @@ export default function Results() {
 				onClick={() => navigate("/kiosk/complete")}
 				className="mt-8 w-full max-w-sm rounded-2xl bg-primary py-4 text-base font-semibold text-white transition-colors hover:bg-primary-deep"
 			>
-				{measurement.isSimulated ? "Finish (not saved)" : "Save & Finish"}
+				{measurement.isSimulated ? "Finish (not saved)" : "Finish"}
 			</button>
 		</div>
 	);

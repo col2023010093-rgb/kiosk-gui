@@ -131,3 +131,11 @@ function patientFromLocal(c: LocalPatient): Patient {
                 email: "",
         } as unknown as Patient;
 }
+
+/** Offline-only lookup: local cache, never Supabase. Used by the kiosk scan page. */
+export async function findPatientOffline(barcode: string): Promise<Patient | null> {
+        const trimmed = barcode.trim();
+        if (!trimmed) return null;
+        const cached = await lookupPatientLocal(trimmed);
+        return cached ? patientFromLocal(cached) : null;
+}
