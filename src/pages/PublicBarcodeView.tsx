@@ -124,8 +124,8 @@ export default function PublicBarcodeView() {
 									<User className="h-5 w-5" aria-hidden="true" />
 								</span>
 								<div className="min-w-0">
-									<p className="text-xs font-semibold uppercase tracking-wide text-[#334155]">Patient</p>
-									<p className="truncate text-lg font-bold">{parsed.params.label ?? "Registered patient"}</p>
+									<p className="text-xs font-semibold uppercase tracking-wide text-[#334155]">User</p>
+									<p className="truncate text-lg font-bold">{parsed.params.label ?? "Registered user"}</p>
 								</div>
 							</div>
 

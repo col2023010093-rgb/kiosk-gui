@@ -318,7 +318,7 @@ export default function ForgotPassword() {
 					<div className="leading-tight">
 						<div className="text-xl font-extrabold text-[#17212B]">GenErick</div>
 						<div className="text-xs font-semibold uppercase tracking-[2px] text-[#52616B]">
-							Patient Health Monitoring Kiosk
+							Health Monitoring Kiosk
 						</div>
 					</div>
 				</div>

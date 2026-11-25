@@ -43,7 +43,7 @@ const ICON_CLASS = "h-6 w-6";
 const STRINGS: Record<LanguageCode, Record<string, string>> = {
 	en: {
 		a11yBarLabel: "Accessibility & Assistance",
-		patientsOnly: "This kiosk is for patients only. Staff, please use the staff portal.",
+		patientsOnly: "This kiosk is for users only. Staff, please use the staff portal.",
 		fontSize: "Text size",
 		language: "Language",
 		audioToggleOn: "Audio: ON",
@@ -53,7 +53,7 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		eyebrow: "USER AUTHENTICATION",
 		welcomeTitle: "Welcome",
 		welcomeSubtitle: "Log in to view your health records and recommendations.",
-		scanTitle: "Scan Patient ID / QR Code",
+		scanTitle: "Scan User ID / QR Code",
 		scanReady: "Ready to scan — no need to tap anything",
 		scanChecking: "Checking your barcode…",
 		scanHint: "Hold QR code 6 inches below screen over the red light scanner",
@@ -88,7 +88,7 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 	},
 	es: {
 		a11yBarLabel: "Accesibilidad y asistencia",
-		patientsOnly: "Este quiosco es solo para pacientes. El personal debe usar el portal del personal.",
+		patientsOnly: "Este quiosco es solo para usuarios. El personal debe usar el portal del personal.",
 		fontSize: "Tamaño del texto",
 		language: "Idioma",
 		audioToggleOn: "Audio: SÍ",
@@ -133,7 +133,7 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 	},
 	tl: {
 		a11yBarLabel: "Accessibility at Tulong",
-		patientsOnly: "Para sa mga pasyente lamang ang kiosk na ito. Staff, gamitin ang staff portal.",
+		patientsOnly: "Para sa mga user lamang ang kiosk na ito. Staff, gamitin ang staff portal.",
 		fontSize: "Laki ng teksto",
 		language: "Wika",
 		audioToggleOn: "Audio: ON",
@@ -143,7 +143,7 @@ const STRINGS: Record<LanguageCode, Record<string, string>> = {
 		eyebrow: "PAGPAPATUNAY NG USER",
 		welcomeTitle: "Maligayang pagbabalik",
 		welcomeSubtitle: "Mag-log in para tingnan ang iyong medical records at rekomendasyon.",
-		scanTitle: "I-scan ang Patient ID / QR Code",
+		scanTitle: "I-scan ang User ID / QR Code",
 		scanReady: "Handa nang i-scan — hindi na kailangang pindutin",
 		scanChecking: "Sinusuri ang iyong barcode…",
 		scanHint: "Ilagay ang QR code 6 pulgada sa ibaba ng screen, sa ibabaw ng pulang scanner",
@@ -420,7 +420,7 @@ export default function Login() {
 					<div className="leading-tight">
 						<div className="text-xl font-extrabold text-[#17212B]">GenErick</div>
 						<div className="text-xs font-semibold uppercase tracking-[2px] text-[#52616B]">
-							Patient Health Monitoring Kiosk
+							Health Monitoring Kiosk
 						</div>
 					</div>
 				</div>

@@ -18,7 +18,7 @@ export default function Profile() {
 					<p className="mt-4 text-base font-bold text-ink">{user?.fullName ?? patientProfile.fullName}</p>
 					<p className="text-sm text-muted">{user?.email ?? "demo@genErick.local"}</p>
 					<span className="mt-4 rounded-full bg-good-tint px-3 py-1 text-xs font-semibold text-good">
-						Verified patient
+						Verified user
 					</span>
 				</Card>
 
@@ -33,7 +33,7 @@ export default function Profile() {
 						<dt className="text-muted">Sex</dt>
 						<dd className="text-right text-ink">{patientProfile.sex}</dd>
 
-						<dt className="text-muted">Patient record</dt>
+						<dt className="text-muted">User record</dt>
 						<dd className="text-right text-ink">{patientProfile.patientId}</dd>
 
 						<dt className="text-muted">Last visit</dt>

@@ -9,9 +9,9 @@ export default function NotRegistered() {
 			<div className="flex h-20 w-20 items-center justify-center rounded-full bg-warn-tint">
 				<UserX size={36} className="text-warn" />
 			</div>
-			<h1 className="mt-6 text-2xl font-bold text-ink">Patient not registered</h1>
+			<h1 className="mt-6 text-2xl font-bold text-ink">User not registered</h1>
 			<p className="mt-2 max-w-sm text-sm text-muted">
-				We couldn&apos;t find a patient for that barcode.{" "}
+				We couldn&apos;t find a user for that barcode.{" "}
 				Please register at the front desk to continue.
 			</p>
 
@@ -20,7 +20,7 @@ export default function NotRegistered() {
 					onClick={() => navigate("/staff/register")}
 					className="rounded-2xl bg-primary py-4 text-base font-semibold text-white transition-colors hover:bg-primary-deep"
 				>
-					Register Patient
+					Register User
 				</button>
 				<button
 					onClick={() => navigate("/kiosk/scan")}

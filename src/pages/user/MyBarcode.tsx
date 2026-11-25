@@ -53,7 +53,7 @@ export default function MyBarcode() {
             </div>
             <h1 className="text-xl font-bold">Kiosk Check-In Pass</h1>
             <p className="mt-1 text-xs text-gray-500">
-              Patient ID: <span className="font-mono font-bold text-gray-700">{barcodeId}</span>
+              User ID: <span className="font-mono font-bold text-gray-700">{barcodeId}</span>
             </p>
 
             <div ref={containerRef} className="my-6 flex justify-center rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">

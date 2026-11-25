@@ -61,7 +61,7 @@ export default function ScanBarcode() {
 
             <h1 className="mt-8 text-2xl font-bold text-ink">Scan your barcode</h1>
             <p className="mt-2 max-w-sm text-center text-sm text-muted">
-                Hold your patient ID or QR code up to the scanner.
+                Hold your user ID or QR code up to the scanner.
             </p>
 
             <button
