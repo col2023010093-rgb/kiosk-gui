@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
 	Activity,
 	ArrowDown,
@@ -20,6 +21,7 @@ import { useUsbScanner } from "@generick/shared";
 import { playScanSuccessTone, playScanErrorTone } from "@generick/shared";
 import VirtualKeyboard from "../../components/kiosk/VirtualKeyboard";
 import AccessibilityToolbar from "../../components/kiosk/AccessibilityToolbar";
+import { useSupabaseReachable } from "../../hooks/useSupabaseReachable";
 import { FONT_SCALES, type FontScaleIndex } from "../../lib/kioskAccessibility";
 
 type Step = "home" | "email";
@@ -182,6 +184,7 @@ type KioskAuth = ReturnType<typeof useAuth>;
 
 export default function Login() {
 	const navigate = useNavigate();
+	const reachability = useSupabaseReachable();
 	const location = useLocation();
 	const notice = (location.state as { notice?: string } | null)?.notice;
 	const auth = useAuth() as KioskAuth;
@@ -439,6 +442,14 @@ export default function Login() {
 			</div>
 
 			<Toast toast={toast} onDismiss={() => setToast(null)} />
+			{reachability === "offline" && createPortal(
+			  <div role="alert" className="fixed inset-x-0 top-0 z-[9999] flex flex-wrap items-center justify-center gap-3 bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900">
+			    <span>No internet. You can still be measured: scan your ID.</span>
+			    <button type="button" onClick={() => navigate("/kiosk/scan")} className="rounded-lg bg-amber-900 px-4 py-2 text-white">
+			      Scan my ID
+			    </button>
+			  </div>
+			, document.body)}
 
 			{step === "home" && (
 				<main
