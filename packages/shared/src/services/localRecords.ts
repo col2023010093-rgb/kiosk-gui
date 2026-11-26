@@ -106,3 +106,21 @@ export function listRecordsLocal(patientId?: string, limit = 50) {
 export function getLocalSyncStatus() {
   return request<LocalSyncStatus>("/api/local/sync/status");
 }
+
+export interface LocalBpReading {
+  systolic: number;
+  diastolic: number;
+  pulse: number;
+  measured_at: string;
+  received_at: string;
+  device_seq: number;
+  irregular: boolean;
+  movement: boolean;
+}
+
+/** Newest Omron reading that belongs to a visit that began at `sinceIso` (null if none yet). */
+export function getLatestBpLocal(sinceIso: string) {
+  return request<{ reading: LocalBpReading | null }>(
+    `/api/local/bp/latest?since=${encodeURIComponent(sinceIso)}`,
+  );
+}
