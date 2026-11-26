@@ -69,3 +69,19 @@ CREATE TABLE IF NOT EXISTS sync_runs (
 );
 
 INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '1');
+
+-- Blood pressure readings pushed by the Omron Bluetooth sync service (UTC).
+CREATE TABLE IF NOT EXISTS omron_readings (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    systolic    INTEGER NOT NULL,
+    diastolic   INTEGER NOT NULL,
+    pulse       INTEGER NOT NULL,
+    measured_at TEXT NOT NULL,               -- monitor clock, converted to UTC
+    received_at TEXT NOT NULL,               -- Pi clock when saved, UTC
+    device_seq  INTEGER NOT NULL,
+    irregular   INTEGER NOT NULL DEFAULT 0,
+    movement    INTEGER NOT NULL DEFAULT 0,
+    source      TEXT NOT NULL DEFAULT 'Omron HEM-7142T2',
+    UNIQUE (measured_at, device_seq, systolic, diastolic, pulse)
+);
+CREATE INDEX IF NOT EXISTS idx_omron_received ON omron_readings (received_at DESC);

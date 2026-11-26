@@ -282,3 +282,40 @@ def sync_status(conn: sqlite3.Connection) -> dict[str, Any]:
         "last_run": dict(last) if last else None,
         "last_successful_sync": last_ok["finished_at"] if last_ok else None,
     }
+
+# ------------------------------------------------------------------ omron bp
+
+OMRON_TIME_MARGIN_S = 120
+
+
+def _iso_ms(t: dt.datetime) -> str:
+    return t.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
+def latest_omron(conn: sqlite3.Connection, since_iso: str) -> dict[str, Any] | None:
+    """Newest Omron reading that belongs to a visit that began at `since_iso`.
+
+    It must have been received by the Pi after the visit began AND measured
+    (monitor clock) no earlier than a small margin before it, so an old reading
+    that only syncs late can never be handed to the wrong person.
+    """
+    try:
+        since = dt.datetime.fromisoformat(str(since_iso).replace("Z", "+00:00"))
+    except ValueError:
+        raise ValidationError("since must be an ISO-8601 time") from None
+    if since.tzinfo is None:
+        raise ValidationError("since must include a timezone (use Z for UTC)")
+    since = since.astimezone(dt.timezone.utc)
+    floor = since - dt.timedelta(seconds=OMRON_TIME_MARGIN_S)
+    row = conn.execute(
+        "SELECT systolic, diastolic, pulse, measured_at, received_at, device_seq, "
+        "irregular, movement FROM omron_readings "
+        "WHERE received_at >= ? AND measured_at >= ? "
+        "ORDER BY measured_at DESC, id DESC LIMIT 1",
+        (_iso_ms(since), _iso_ms(floor))).fetchone()
+    if row is None:
+        return None
+    out = dict(row)
+    out["irregular"] = bool(out["irregular"])
+    out["movement"] = bool(out["movement"])
+    return out
