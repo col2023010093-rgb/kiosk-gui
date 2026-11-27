@@ -20,9 +20,14 @@ function formatDate(date: Date) {
     });
 }
 
+function prefersReducedMotion() {
+    return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export default function IdleScreen() {
     const navigate = useNavigate();
     const reachability = useSupabaseReachable();
+    const [reduceMotion] = useState(prefersReducedMotion);
     const [clock, setClock] = useState(() => formatClock(new Date()));
     const [date, setDate] = useState(() => formatDate(new Date()));
 
@@ -44,7 +49,7 @@ export default function IdleScreen() {
     };
 
     return (
-        <div className="idle-screen relative flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-bg text-ink px-8 py-10 sm:px-14 sm:py-16">
+        <div onClick={handleTap} className="idle-screen cursor-pointer relative flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-bg text-ink px-8 py-10 sm:px-14 sm:py-16">
             <div
                 className="absolute inset-0 -z-20"
                 style={{
@@ -80,7 +85,7 @@ export default function IdleScreen() {
                         <div>
                             <div className="text-3xl sm:text-4xl font-bold tracking-tight">Health Monitoring Kiosk</div>
                             <div className="mt-1 text-sm sm:text-lg font-semibold uppercase tracking-widest text-muted">
-                                Health Monitoring Kiosk
+                                Self-Service Health Screening
                             </div>
                         </div>
                     </div>
@@ -88,6 +93,12 @@ export default function IdleScreen() {
                     <div className="text-right">
                         <div className="font-mono text-3xl sm:text-4xl font-bold tracking-wider">{clock}</div>
                         <div className="mt-1 text-sm sm:text-lg font-semibold uppercase tracking-widest text-muted">{date}</div>
+                        {reachability === "offline" && (
+                            <div role="status" className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-600 bg-amber-100 px-4 py-1.5 text-sm sm:text-base font-semibold text-amber-900">
+                                <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-amber-600" />
+                                Working offline
+                            </div>
+                        )}
                     </div>
                 </div>
             </header>
@@ -97,7 +108,7 @@ export default function IdleScreen() {
                 <div className="idle-heartbeat h-28 sm:h-40 w-[min(560px,90%)] overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)] [-webkit-mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]">
                     <div
                         className="flex h-full w-[1000px] motion-reduce:animate-none"
-                        style={{ animation: "scrollPulse 3.6s linear infinite" }}
+                        style={{ animation: reduceMotion ? "none" : "scrollPulse 3.6s linear infinite" }}
                     >
                         <svg width="500" height="90" viewBox="0 0 500 90" preserveAspectRatio="none" className="h-full">
                             <path
@@ -109,7 +120,7 @@ export default function IdleScreen() {
                                 strokeLinejoin="round"
                                 style={{
                                     filter: "drop-shadow(0 0 6px rgba(45,212,191,0.55))",
-                                    animation: "glow 1.6s ease-in-out infinite",
+                                    animation: reduceMotion ? "none" : "glow 1.6s ease-in-out infinite",
                                 }}
                             />
                         </svg>
@@ -123,7 +134,7 @@ export default function IdleScreen() {
                                 strokeLinejoin="round"
                                 style={{
                                     filter: "drop-shadow(0 0 6px rgba(45,212,191,0.55))",
-                                    animation: "glow 1.6s ease-in-out infinite",
+                                    animation: reduceMotion ? "none" : "glow 1.6s ease-in-out infinite",
                                 }}
                             />
                         </svg>
@@ -148,18 +159,17 @@ export default function IdleScreen() {
                     <button
                         type="button"
                         aria-label="Tap to log in and begin health check"
-                        onClick={handleTap}
                         className="idle-button relative flex h-44 w-44 sm:h-56 sm:w-56 items-center justify-center rounded-full border-0 bg-linear-to-br from-accent to-accent-deep shadow-[0_12px_30px_rgba(13,148,136,0.32)] transition-transform active:scale-[0.96] cursor-pointer"
                     >
                         <span
                             aria-hidden="true"
                             className="absolute inset-0 rounded-full border border-accent/40"
-                            style={{ animation: "ripple 2.4s ease-out infinite" }}
+                            style={{ animation: reduceMotion ? "none" : "ripple 2.4s ease-out infinite" }}
                         />
                         <span
                             aria-hidden="true"
                             className="absolute inset-0 rounded-full border border-accent/40"
-                            style={{ animation: "ripple 2.4s ease-out infinite" }}
+                            style={{ animation: reduceMotion ? "none" : "ripple 2.4s ease-out 1.2s infinite" }}
                         />
                         <svg viewBox="0 0 24 24" fill="none" className="relative z-10 h-20 w-20 sm:h-28 sm:w-28">
                             <circle cx="12" cy="8.5" r="3.2" stroke="#fff" strokeWidth="2" />
@@ -216,8 +226,6 @@ export default function IdleScreen() {
                 </li>
             </ol>
 
-            <footer className="idle-footer flex w-full max-w-6xl shrink-0 items-center justify-between border-t border-line px-4 py-4 text-sm text-muted">
-            </footer>
         </div>
     );
 }
