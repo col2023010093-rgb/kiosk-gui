@@ -1,5 +1,6 @@
 import { supabase, saveRecordLocal, LocalApiUnavailableError } from "@generick/shared";
 import { VITAL_RANGES } from "@generick/shared";
+import { startBloodPressureWindow, clearBloodPressureWindow, readBloodPressure } from "./omronBp";
 import type {
 	AssessmentResult,
 	AssessmentType,
@@ -7,10 +8,6 @@ import type {
 	SensorKey,
 	VitalStatus,
 } from "@generick/shared";
-
-function randomBetween(min: number, max: number) {
-	return Math.random() * (max - min) + min;
-}
 
 function round1(value: number) {
 	return Math.round(value * 10) / 10;
@@ -90,10 +87,9 @@ function requireFiniteNumber(value: unknown, label: string, min: number, max: nu
 
 // Physical sensor capture — unrelated to Supabase, left as-is. heightWeight,
 // heartRateSpo2 and temperature read from real hardware via sensor_server.py.
-// bloodPressure still has no hardware endpoint wired up, so it returns
-// simulated data and is flagged `simulated: true`. runAssessment uses that
-// flag to mark the whole result as simulated, and saveHealthRecord refuses to
-// persist a simulated result — see below.
+// bloodPressure comes from the Omron monitor via omronBp.ts. A reader that
+// returns placeholder data must set `simulated: true`; runAssessment then marks
+// the whole result as simulated and saveHealthRecord refuses to persist it.
 const SENSOR_READERS: Record<SensorKey, SensorReader> = {
 	heightWeight: {
 		simulated: false,
@@ -121,13 +117,9 @@ const SENSOR_READERS: Record<SensorKey, SensorReader> = {
 		},
 	},
 	bloodPressure: {
-		simulated: true,
-		read: async () => {
-			return {
-				bloodPressureSystolic: Math.round(randomBetween(110, 132)),
-				bloodPressureDiastolic: Math.round(randomBetween(70, 88)),
-			};
-		},
+		simulated: false,
+		// Real reading from the Omron monitor (see omronBp.ts).
+		read: async () => readBloodPressure(),
 	},
 	heartRateSpo2: {
 		simulated: false,
@@ -183,6 +175,7 @@ export async function runAssessment(
 	const sensors = ASSESSMENT_SENSORS[testType].filter((key) => !options.skip?.includes(key));
 	const reading: Partial<SensorReading> = {};
 	const simulatedSensors: SensorKey[] = [];
+	if (sensors.includes("bloodPressure")) startBloodPressureWindow(patientId);
 	for (const sensorKey of sensors) {
 		const reader = SENSOR_READERS[sensorKey];
 		const partial = await reader.read((p) => {
@@ -242,6 +235,7 @@ export async function saveHealthRecord(
                         bmi: result.bmi ?? null,
                         measured_at: result.recordedAt,
                 });
+                clearBloodPressureWindow();
                 return {
                         record_id: saved.record_id,
                         patient_id: result.patientId,
@@ -282,6 +276,7 @@ export async function saveHealthRecord(
 		.single();
 
 	if (error) throw error;
+	clearBloodPressureWindow();
 	return data;
 }
 

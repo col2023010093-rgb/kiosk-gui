@@ -76,6 +76,18 @@ def lookup_patient():
     return jsonify({"patient": patient})
 
 
+@app.get("/api/local/bp/latest")
+def latest_bp():
+    conn = _conn()
+    try:
+        reading = local_db.latest_omron(conn, request.args.get("since", ""))
+    except local_db.ValidationError as exc:
+        return jsonify({"error": str(exc)}), 422
+    finally:
+        conn.close()
+    return jsonify({"reading": reading})
+
+
 @app.get("/api/local/sync/status")
 def sync_status():
     conn = _conn()
