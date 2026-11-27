@@ -1,3 +1,4 @@
+import BloodPressureNotice from "../../components/BloodPressureNotice";
 import { useEffect, useState } from "react";
 import type { ElementType } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -238,6 +239,7 @@ export default function SelfMeasureVitals() {
             <div className="font-mono text-xs uppercase tracking-[3px] text-primary">Measuring vitals</div>
             <h1 className="mt-2 text-2xl font-bold text-ink">Please stay still{patient ? `, ${patient.first_name}` : ""}</h1>
             <p className="mt-2 text-sm text-muted">Running the sensors for this assessment.</p>
+            <BloodPressureNotice />
 
             <div className="mt-10 flex w-full max-w-sm flex-col gap-3" aria-live="polite">
                 {steps.map((step) => {

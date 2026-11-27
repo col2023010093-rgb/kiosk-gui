@@ -27,16 +27,40 @@ interface Visit {
 
 let visit: Visit | null = null;
 
+// What the kiosk screen should tell the patient while we wait for a usable reading.
+export type BloodPressureNoticeKind = "movement" | "invalid";
+let notice: BloodPressureNoticeKind | null = null;
+const noticeListeners = new Set<() => void>();
+
+function setNotice(next: BloodPressureNoticeKind | null): void {
+  if (notice === next) return;
+  notice = next;
+  noticeListeners.forEach((listener) => listener());
+}
+
+export function getBloodPressureNotice(): BloodPressureNoticeKind | null {
+  return notice;
+}
+
+export function subscribeBloodPressureNotice(listener: () => void): () => void {
+  noticeListeners.add(listener);
+  return () => {
+    noticeListeners.delete(listener);
+  };
+}
+
 /** Marks the moment this patient's blood pressure visit began. Safe to call on every retry. */
 export function startBloodPressureWindow(patientId: string): void {
   const now = Date.now();
   if (visit && visit.patientId === patientId && now - visit.startedAt < VISIT_MAX_AGE_MS) return;
   visit = { patientId, startedAt: now, since: new Date(now).toISOString() };
+  setNotice(null);
 }
 
 /** Forget the visit (after the record is saved) so the next patient starts clean. */
 export function clearBloodPressureWindow(): void {
   visit = null;
+  setNotice(null);
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -64,6 +88,7 @@ export async function readBloodPressure(): Promise<BloodPressure> {
       reading.diastolic >= 30 && reading.diastolic <= 150 &&
       reading.systolic > reading.diastolic;
     if (plausible && !reading.movement) {
+      setNotice(null);
       current.accepted = {
         bloodPressureSystolic: reading.systolic,
         bloodPressureDiastolic: reading.diastolic,
@@ -71,6 +96,7 @@ export async function readBloodPressure(): Promise<BloodPressure> {
       return current.accepted;
     }
     // Body movement or an impossible value: skip it and wait for a fresh measurement.
+    setNotice(reading.movement ? "movement" : "invalid");
     current.since = justAfter(reading.received_at);
   }
   throw new Error("No blood pressure reading yet. Take a measurement on the monitor.");

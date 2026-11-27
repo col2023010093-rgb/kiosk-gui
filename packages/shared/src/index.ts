@@ -39,3 +39,4 @@ export * from "./utils/registrationValidation";
 export * from "./utils/helpers";
 export * from "./utils/constants";
 export * from "./services/localRecords";
+export { getBloodPressureNotice, subscribeBloodPressureNotice } from "./services/omronBp";
